@@ -1,0 +1,19 @@
+[package]
+name = "penrosx"
+version = "0.1.0"
+edition = "2024"
+
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1
+
+[dependencies]
+accessibility = "0.2.0"
+accessibility-sys = "0.2.0"
+block = "0.1.6"
+core-foundation = "0.10.0"
+core-foundation-sys = "0.8.7"
+core-graphics = "0.24.0"
+objc = "0.2"
+penrose = { version = "0.3.6", default-features = false }
