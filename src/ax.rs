@@ -25,6 +25,7 @@ use core_foundation_sys::{
     number::kCFBooleanTrue,
 };
 use core_graphics::display::CGWindowID;
+use penrose::{Result, custom_error};
 use std::ffi::c_void;
 
 // /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers
@@ -141,10 +142,10 @@ pub(crate) fn running_applications() -> Vec<NSRunningApplication> {
 
 /// Attempt to get an [AXUIElement] for the accessibility API for the given application window
 /// (identified by pid and window id)
-pub(crate) fn get_axwindow(pid: i32, winid: u32) -> Result<AXUIElement, &'static str> {
+pub(crate) fn get_axwindow(pid: i32, winid: u32) -> Result<AXUIElement> {
     let attr = AXUIElement::application(pid)
         .attribute(&AXAttribute::windows())
-        .map_err(|_| "Failed to get windows attr")?;
+        .map_err(|err| custom_error!("Failed to get windows attr: {}", err))?;
 
     for ax_window in attr.get_all_values().into_iter() {
         unsafe {
@@ -159,7 +160,7 @@ pub(crate) fn get_axwindow(pid: i32, winid: u32) -> Result<AXUIElement, &'static
         }
     }
 
-    Err("Window not found")
+    Err(custom_error!("Window not found"))
 }
 
 /// Drop handle around an AXObserverRef
@@ -189,26 +190,29 @@ unsafe extern "C" fn ax_observer_callback(
 }
 
 impl AXObserverWrapper {
-    pub fn try_new(pid: i32, notif: &str, ax: AXUIElementRef, data: *mut c_void) -> Option<Self> {
+    pub fn try_new(pid: i32, notif: &str, ax: AXUIElementRef, data: *mut c_void) -> Result<Self> {
         unsafe {
             let mut obs = std::ptr::null_mut();
-            if AXObserverCreate(pid, ax_observer_callback, &mut obs as *mut _) != kAXErrorSuccess {
-                return None;
+            let err = AXObserverCreate(pid, ax_observer_callback, &mut obs as *mut _);
+            if err != kAXErrorSuccess {
+                return Err(custom_error!("unable to create ax observer: {}", err));
             }
             let notif = CFString::new(notif);
-            if AXObserverAddNotification(obs, ax, notif.as_concrete_TypeRef(), data)
-                == kAXErrorSuccess
-            {
-                CFRunLoopAddSource(
-                    CFRunLoopGetCurrent(),
-                    AXObserverGetRunLoopSource(obs),
-                    kCFRunLoopDefaultMode,
-                );
-
-                return Some(Self { obs, ax, notif });
+            let err = AXObserverAddNotification(obs, ax, notif.as_concrete_TypeRef(), data);
+            if err != kAXErrorSuccess {
+                return Err(custom_error!(
+                    "unable to add notification to ax observer: {}",
+                    err
+                ));
             }
 
-            None
+            CFRunLoopAddSource(
+                CFRunLoopGetCurrent(),
+                AXObserverGetRunLoopSource(obs),
+                kCFRunLoopDefaultMode,
+            );
+
+            Ok(Self { obs, ax, notif })
         }
     }
 }

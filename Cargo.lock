@@ -204,9 +204,8 @@ checksum = "d75b0bedcc4fe52caa0e03d9f1151a323e4aa5e2d78ba3580400cd3c9e2bc4bc"
 
 [[package]]
 name = "penrose"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b55d64d68a6e8f22312da25b54f6422dc937951b533c1e84890d372799473ac2"
+version = "0.4.0"
+source = "git+https://github.com/sminez/penrose.git#142661629d301678c174676b88790a9f4d0893ee"
 dependencies = [
  "anymap",
  "bitflags",

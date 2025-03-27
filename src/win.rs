@@ -1,15 +1,14 @@
 use crate::{
-    ax::{AXObserverWrapper, get_axwindow, running_applications},
-    nsworkspace::{INSRunningApplication, NSRunningApplication},
+    ax::{AXObserverWrapper, get_axwindow},
+    nsworkspace::{INSRunningApplication, NSRunningApplication, NSString_NSStringDeprecated},
 };
 use accessibility::ui_element::AXUIElement;
 use accessibility_sys::{
-    AXError, AXUIElementCreateApplication, AXUIElementSetAttributeValue, AXValueCreate,
-    kAXErrorSuccess, kAXFocusedWindowChangedNotification, kAXMovedNotification,
-    kAXPositionAttribute, kAXResizedNotification, kAXSizeAttribute,
-    kAXUIElementDestroyedNotification, kAXValueTypeCGPoint, kAXValueTypeCGSize,
-    kAXWindowCreatedNotification, kAXWindowDeminiaturizedNotification,
-    kAXWindowMiniaturizedNotification,
+    AXUIElementCreateApplication, AXUIElementSetAttributeValue, AXValueCreate, kAXErrorSuccess,
+    kAXFocusedWindowChangedNotification, kAXMovedNotification, kAXPositionAttribute,
+    kAXResizedNotification, kAXSizeAttribute, kAXUIElementDestroyedNotification,
+    kAXValueTypeCGPoint, kAXValueTypeCGSize, kAXWindowCreatedNotification,
+    kAXWindowDeminiaturizedNotification, kAXWindowMiniaturizedNotification,
 };
 use core_foundation::{
     base::{TCFType, ToVoid},
@@ -22,7 +21,11 @@ use core_foundation_sys::{
     string::CFStringRef,
 };
 use core_graphics::display::{self, CGDisplay, CGPoint, CGRect, CGSize};
-use std::ffi::c_void;
+use penrose::{Result, custom_error};
+use std::ffi::{CStr, c_void};
+
+pub type Pid = i32;
+pub type WinId = u32;
 
 macro_rules! set_attr {
     ($axwin:expr, $val:expr, $ty:expr, $name:expr) => {
@@ -37,7 +40,7 @@ macro_rules! set_attr {
             if err == kAXErrorSuccess {
                 Ok(())
             } else {
-                Err(err)
+                Err(custom_error!("unable to set {} attr: {}", $name, err))
             }
         }
     };
@@ -45,8 +48,8 @@ macro_rules! set_attr {
 
 #[derive(Debug, Clone)]
 pub struct OsxWindow {
-    pub win_id: u32,
-    pub owner_pid: i32,
+    pub win_id: WinId,
+    pub owner_pid: Pid,
     pub window_layer: i32, // do we only care about layer 0?
     pub bounds: CGRect,
     pub owner: String,
@@ -73,7 +76,7 @@ impl OsxWindow {
                     *win_info as CFDictionaryRef,
                 )
             };
-            if let Some(info) = OsxWindow::try_from_dict(&dict) {
+            if let Ok(info) = OsxWindow::try_from_dict(&dict) {
                 infos.push(info);
             }
         }
@@ -81,25 +84,29 @@ impl OsxWindow {
         infos
     }
 
-    pub fn set_size(&self, w: f64, h: f64) -> Result<(), AXError> {
+    pub fn set_size(&self, w: f64, h: f64) -> Result<()> {
         let mut s = CGSize::new(w, h);
         set_attr!(&self.axwin, s, kAXValueTypeCGSize, kAXSizeAttribute)
     }
 
-    pub fn set_pos(&self, x: f64, y: f64) -> Result<(), AXError> {
+    pub fn set_pos(&self, x: f64, y: f64) -> Result<()> {
         let mut p = CGPoint::new(x, y);
         set_attr!(&self.axwin, p, kAXValueTypeCGPoint, kAXPositionAttribute)
     }
 
-    fn try_from_dict(dict: &CFDictionary) -> Option<Self> {
-        fn get_string(dict: &CFDictionary, key: &str) -> Option<String> {
-            dict.find(CFString::new(key).to_void()).map(|value| {
-                unsafe { CFString::wrap_under_get_rule(*value as CFStringRef) }.to_string()
-            })
+    fn try_from_dict(dict: &CFDictionary) -> Result<Self> {
+        fn get_string(dict: &CFDictionary, key: &str) -> Result<String> {
+            dict.find(CFString::new(key).to_void())
+                .map(|value| {
+                    unsafe { CFString::wrap_under_get_rule(*value as CFStringRef) }.to_string()
+                })
+                .ok_or_else(|| custom_error!("unable to read {} key as string", key))
         }
 
-        fn get_i32(dict: &CFDictionary, key: &str) -> Option<i32> {
-            let value = dict.find(CFString::new(key).to_void())?;
+        fn get_i32(dict: &CFDictionary, key: &str) -> Result<i32> {
+            let value = dict
+                .find(CFString::new(key).to_void())
+                .ok_or_else(|| custom_error!("unable to read {} key as string", key))?;
             let mut result = 0;
             unsafe {
                 CFNumberGetValue(
@@ -109,21 +116,24 @@ impl OsxWindow {
                 )
             };
 
-            Some(result)
+            Ok(result)
         }
 
-        fn get_dict(dict: &CFDictionary, key: &str) -> Option<CFDictionary> {
-            let value = dict.find(CFString::new(key).to_void())?;
-            Some(unsafe { CFDictionary::wrap_under_get_rule(*value as CFDictionaryRef) })
+        fn get_dict(dict: &CFDictionary, key: &str) -> Result<CFDictionary> {
+            let value = dict
+                .find(CFString::new(key).to_void())
+                .ok_or_else(|| custom_error!("unable to read {} key as string", key))?;
+            Ok(unsafe { CFDictionary::wrap_under_get_rule(*value as CFDictionaryRef) })
         }
 
         let win_id = get_i32(dict, "kCGWindowNumber")? as u32;
         let owner_pid = get_i32(dict, "kCGWindowOwnerPID")?;
         let window_layer = get_i32(dict, "kCGWindowLayer")?;
-        let bounds = CGRect::from_dict_representation(&get_dict(dict, "kCGWindowBounds")?)?;
+        let bounds = CGRect::from_dict_representation(&get_dict(dict, "kCGWindowBounds")?)
+            .ok_or_else(|| custom_error!("unable to parse CGRect from dict"))?;
         let owner = get_string(dict, "kCGWindowOwnerName")?;
-        let window_name = get_string(dict, "kCGWindowName");
-        let axwin = get_axwindow(owner_pid, win_id).ok()?;
+        let window_name = get_string(dict, "kCGWindowName").ok();
+        let axwin = get_axwindow(owner_pid, win_id)?;
         let axref = axwin.as_concrete_TypeRef();
         let observers = [
             kAXUIElementDestroyedNotification,
@@ -134,9 +144,9 @@ impl OsxWindow {
         ]
         .into_iter()
         .map(|s| AXObserverWrapper::try_new(owner_pid, s, axref, std::ptr::null_mut()))
-        .collect::<Option<Vec<_>>>()?;
+        .collect::<Result<Vec<_>>>()?;
 
-        Some(Self {
+        Ok(Self {
             win_id,
             owner_pid,
             window_layer,
@@ -151,6 +161,8 @@ impl OsxWindow {
 
 #[derive(Debug, Clone)]
 pub struct OsxApp {
+    pub pid: Pid,
+    pub name: String,
     pub app: NSRunningApplication,
     // observers needs to be before axapp so we drop in the correct order
     pub observers: Vec<AXObserverWrapper>,
@@ -158,16 +170,12 @@ pub struct OsxApp {
 }
 
 impl OsxApp {
-    pub fn running_applications() -> Vec<Self> {
-        running_applications()
-            .into_iter()
-            .flat_map(Self::try_new)
-            .collect()
-    }
-
-    pub fn try_new(app: NSRunningApplication) -> Option<Self> {
+    pub fn try_new(app: NSRunningApplication) -> Result<Self> {
         unsafe {
             let pid = app.processIdentifier();
+            let name = CStr::from_ptr(app.localizedName().cString())
+                .to_string_lossy()
+                .to_string();
             let axapp = AXUIElementCreateApplication(pid);
             let observers = [
                 kAXWindowCreatedNotification,
@@ -175,9 +183,11 @@ impl OsxApp {
             ]
             .into_iter()
             .map(|s| AXObserverWrapper::try_new(pid, s, axapp, std::ptr::null_mut()))
-            .collect::<Option<Vec<_>>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
-            Some(Self {
+            Ok(Self {
+                pid,
+                name,
                 app,
                 axapp: AXUIElement::wrap_under_get_rule(axapp),
                 observers,
