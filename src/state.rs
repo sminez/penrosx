@@ -1,8 +1,19 @@
 //! OSX specific state that we track
 use crate::{
-    ax::running_applications,
-    nsworkspace::{INSRunningApplication, NSRunningApplication},
+    ax::{global_observer, register_observers, running_applications},
+    nsworkspace::{
+        INSRunningApplication,
+        NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
+        NSRunningApplication,
+    },
     win::{OsxApp, OsxWindow, Pid, WinId},
+};
+use cocoa::{
+    appkit::{
+        NSApp, NSApplication, NSApplicationActivationPolicy::NSApplicationActivationPolicyRegular,
+    },
+    base::nil,
+    foundation::NSAutoreleasePool,
 };
 use core_graphics::display::{CGDisplay, CGRect};
 use penrose::{
@@ -53,6 +64,8 @@ impl Default for Config {
 /// running applications and associated windows.
 #[derive(Debug)]
 pub struct State {
+    pub app: cocoa::base::id,
+    pub pool: cocoa::base::id,
     pub config: Config,
     pub stack_set: StackSet<WinId>,
     pub apps: HashMap<Pid, OsxApp>,
@@ -62,6 +75,15 @@ pub struct State {
 
 impl State {
     pub fn try_new(config: Config) -> Result<Self> {
+        // Create the app itself
+        let (pool, app) = unsafe {
+            let pool = NSAutoreleasePool::new(nil);
+            let app = NSApp();
+            app.setActivationPolicy_(NSApplicationActivationPolicyRegular);
+
+            (pool, app)
+        };
+
         let mut display_rects: Vec<_> = cg_displays()?
             .into_iter()
             .map(|r| {
@@ -85,6 +107,8 @@ impl State {
         let diff = Diff::new(ss.clone(), ss);
 
         let mut state = Self {
+            app,
+            pool,
             config,
             stack_set,
             apps: HashMap::new(),
@@ -97,6 +121,19 @@ impl State {
         state.update_known_apps_and_windows();
 
         Ok(state)
+    }
+
+    pub fn run(self) {
+        let global_observer = global_observer();
+        register_observers(global_observer);
+
+        unsafe {
+            let current_app = NSRunningApplication::currentApplication();
+            current_app.activateWithOptions_(
+                NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
+            );
+            self.app.run();
+        }
     }
 
     pub(crate) fn update_known_apps_and_windows(&mut self) {

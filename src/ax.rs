@@ -1,7 +1,6 @@
 use crate::nsworkspace::{
-    self as ns, INSArray, INSNotification, INSNotificationCenter, INSRunningApplication,
-    INSWorkspace, NSArray, NSRunningApplication, NSWorkspace,
-    NSWorkspace_NSWorkspaceRunningApplications,
+    self as ns, CFRetain, INSArray, INSNotificationCenter, INSRunningApplication, INSWorkspace,
+    NSArray, NSRunningApplication, NSWorkspace, NSWorkspace_NSWorkspaceRunningApplications, id,
 };
 use accessibility::{attribute::AXAttribute, ui_element::AXUIElement};
 use accessibility_sys::{
@@ -10,7 +9,6 @@ use accessibility_sys::{
     AXUIElementCreateSystemWide, AXUIElementRef, AXUIElementSetMessagingTimeout, kAXErrorSuccess,
     kAXTrustedCheckOptionPrompt,
 };
-use block::ConcreteBlock;
 use core_foundation::{
     base::TCFType,
     runloop::{CFRunLoopAddSource, CFRunLoopGetCurrent, kCFRunLoopDefaultMode},
@@ -25,8 +23,30 @@ use core_foundation_sys::{
     number::kCFBooleanTrue,
 };
 use core_graphics::display::CGWindowID;
+use objc::{
+    class,
+    declare::ClassDecl,
+    msg_send,
+    runtime::{Object, Sel},
+    sel, sel_impl,
+};
 use penrose::{Result, custom_error};
 use std::ffi::c_void;
+
+extern "C" fn action(_this: &Object, _cmd: Sel) {
+    println!("CALLED");
+}
+
+pub fn global_observer() -> id {
+    let sup = class!(NSObject);
+    let mut decl = ClassDecl::new("GlobalObserver", sup).unwrap();
+    unsafe {
+        decl.add_method(sel!(action), action as extern "C" fn(&Object, Sel));
+        let cls = decl.register();
+
+        msg_send![cls, new]
+    }
+}
 
 // /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers
 
@@ -65,45 +85,8 @@ pub fn set_ax_timeout() {
     unsafe { AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), 1.0) };
 }
 
-#[allow(non_camel_case_types)]
-#[repr(C)]
-pub struct dispatch_object_s {
-    _private: [u8; 0],
-}
-#[allow(non_camel_case_types)]
-pub type dispatch_queue_t = *mut dispatch_object_s;
-#[allow(non_camel_case_types)]
-pub type dispatch_object_t = *mut dispatch_object_s;
-
-#[cfg_attr(target_os = "macos", link(name = "System", kind = "dylib"))]
-unsafe extern "C" {
-    static _dispatch_main_q: dispatch_object_s;
-    fn dispatch_retain(object: dispatch_object_t);
-}
-
-fn main_queue() -> dispatch_queue_t {
-    unsafe {
-        let q = &_dispatch_main_q as *const _ as dispatch_queue_t;
-        dispatch_retain(q);
-        q
-    }
-}
-
-// TODO: this needs to push the notifications into a channel for processing
-fn on_notif(n: ns::NSNotification) {
-    unsafe {
-        let name = n.name();
-        let user_info = n.userInfo();
-        println!("{name:?} {user_info:?}");
-    }
-}
-
 /// Register NSWorkspace observers for application notifications
-pub fn register_observers() {
-    let queue = ns::NSOperationQueue(main_queue() as *mut _ as ns::id);
-    let mut block = ConcreteBlock::new(on_notif);
-    let ptr = &mut block as *mut _ as *mut c_void;
-
+pub fn register_observers(observer: id) {
     unsafe {
         let nc = ns::NSWorkspace::sharedWorkspace().notificationCenter();
         let names = [
@@ -116,7 +99,12 @@ pub fn register_observers() {
         ];
 
         for name in names {
-            nc.addObserverForName_object_queue_usingBlock_(name, std::ptr::null_mut(), queue, ptr);
+            nc.addObserver_selector_name_object_(
+                observer,
+                sel!(action),
+                name,
+                std::ptr::null_mut(),
+            );
         }
     }
 }
@@ -142,10 +130,10 @@ pub(crate) fn running_applications() -> Vec<NSRunningApplication> {
 
 /// Attempt to get an [AXUIElement] for the accessibility API for the given application window
 /// (identified by pid and window id)
-pub(crate) fn get_axwindow(pid: i32, winid: u32) -> Result<AXUIElement> {
+pub(crate) fn get_axwindow(pid: i32, winid: u32) -> Option<AXUIElement> {
     let attr = AXUIElement::application(pid)
         .attribute(&AXAttribute::windows())
-        .map_err(|err| custom_error!("Failed to get windows attr: {}", err))?;
+        .ok()?;
 
     for ax_window in attr.get_all_values().into_iter() {
         unsafe {
@@ -153,14 +141,14 @@ pub(crate) fn get_axwindow(pid: i32, winid: u32) -> Result<AXUIElement> {
             if _AXUIElementGetWindow(ax_window as AXUIElementRef, &mut id) == kAXErrorSuccess
                 && id == winid
             {
-                return Ok(AXUIElement::wrap_under_get_rule(
+                return Some(AXUIElement::wrap_under_get_rule(
                     ax_window as AXUIElementRef,
                 ));
             }
         }
     }
 
-    Err(custom_error!("Window not found"))
+    None
 }
 
 /// Drop handle around an AXObserverRef
@@ -186,7 +174,8 @@ unsafe extern "C" fn ax_observer_callback(
     notification: CFStringRef,
     _refcon: *mut c_void,
 ) {
-    println!("{notification:?}");
+    let notif = unsafe { CFString::wrap_under_get_rule(notification) }.to_string();
+    println!("AX OBSERVER CALLBACK -> {notif}");
 }
 
 impl AXObserverWrapper {
@@ -197,6 +186,7 @@ impl AXObserverWrapper {
             if err != kAXErrorSuccess {
                 return Err(custom_error!("unable to create ax observer: {}", err));
             }
+            CFRetain(obs as *const _);
             let notif = CFString::new(notif);
             let err = AXObserverAddNotification(obs, ax, notif.as_concrete_TypeRef(), data);
             if err != kAXErrorSuccess {

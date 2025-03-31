@@ -76,8 +76,13 @@ impl OsxWindow {
                     *win_info as CFDictionaryRef,
                 )
             };
-            if let Ok(info) = OsxWindow::try_from_dict(&dict) {
-                infos.push(info);
+            match OsxWindow::try_from_dict(&dict) {
+                Ok(info) => {
+                    println!("osxwindow created for {}", info.owner);
+                    infos.push(info);
+                }
+                Err(penrose::Error::Custom(s)) if s == "Window not found" => (),
+                Err(e) => println!("{e} {dict:?}"),
             }
         }
 
@@ -106,7 +111,7 @@ impl OsxWindow {
         fn get_i32(dict: &CFDictionary, key: &str) -> Result<i32> {
             let value = dict
                 .find(CFString::new(key).to_void())
-                .ok_or_else(|| custom_error!("unable to read {} key as string", key))?;
+                .ok_or_else(|| custom_error!("unable to read {} key as i32", key))?;
             let mut result = 0;
             unsafe {
                 CFNumberGetValue(
@@ -122,18 +127,19 @@ impl OsxWindow {
         fn get_dict(dict: &CFDictionary, key: &str) -> Result<CFDictionary> {
             let value = dict
                 .find(CFString::new(key).to_void())
-                .ok_or_else(|| custom_error!("unable to read {} key as string", key))?;
+                .ok_or_else(|| custom_error!("unable to read {} key as dict", key))?;
             Ok(unsafe { CFDictionary::wrap_under_get_rule(*value as CFDictionaryRef) })
         }
 
         let win_id = get_i32(dict, "kCGWindowNumber")? as u32;
         let owner_pid = get_i32(dict, "kCGWindowOwnerPID")?;
+        let axwin =
+            get_axwindow(owner_pid, win_id).ok_or_else(|| custom_error!("Window not found"))?;
         let window_layer = get_i32(dict, "kCGWindowLayer")?;
         let bounds = CGRect::from_dict_representation(&get_dict(dict, "kCGWindowBounds")?)
             .ok_or_else(|| custom_error!("unable to parse CGRect from dict"))?;
         let owner = get_string(dict, "kCGWindowOwnerName")?;
         let window_name = get_string(dict, "kCGWindowName").ok();
-        let axwin = get_axwindow(owner_pid, win_id)?;
         let axref = axwin.as_concrete_TypeRef();
         let observers = [
             kAXUIElementDestroyedNotification,

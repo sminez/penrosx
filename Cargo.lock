@@ -221,7 +221,7 @@ version = "0.1.0"
 dependencies = [
  "accessibility",
  "accessibility-sys",
- "block",
+ "cocoa",
  "core-foundation",
  "core-foundation-sys",
  "core-graphics",
