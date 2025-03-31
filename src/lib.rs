@@ -7,6 +7,7 @@
 #![allow(clippy::all)]
 
 pub mod ax;
+pub mod manager;
 pub mod nsworkspace;
 pub mod state;
 pub mod win;

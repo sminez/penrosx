@@ -1,15 +1,7 @@
-use penrosx::{
-    ax::{proc_is_ax_trusted, set_ax_timeout},
-    state::{Config, State},
-};
+use penrosx::{manager::WindowManager, state::Config};
 
 fn main() {
-    println!("proc is trusted: {}", proc_is_ax_trusted());
-    set_ax_timeout();
+    let wm = WindowManager::new(Config::default());
 
-    println!("constructing state");
-    let state = State::try_new(Config::default()).unwrap();
-    // println!("{state:#?}");
-
-    state.run();
+    wm.run();
 }

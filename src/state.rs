@@ -1,19 +1,8 @@
 //! OSX specific state that we track
 use crate::{
-    ax::{global_observer, register_observers, running_applications},
-    nsworkspace::{
-        INSRunningApplication,
-        NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
-        NSRunningApplication,
-    },
+    ax::running_applications,
+    nsworkspace::{INSRunningApplication, NSRunningApplication},
     win::{OsxApp, OsxWindow, Pid, WinId},
-};
-use cocoa::{
-    appkit::{
-        NSApp, NSApplication, NSApplicationActivationPolicy::NSApplicationActivationPolicyRegular,
-    },
-    base::nil,
-    foundation::NSAutoreleasePool,
 };
 use core_graphics::display::{CGDisplay, CGRect};
 use penrose::{
@@ -35,7 +24,7 @@ pub struct Config {
     /// Whether or not the mouse entering a new window should set focus
     pub focus_follow_mouse: bool,
     /// The stack of layouts to use for each workspace
-    pub default_layouts: LayoutStack,
+    // pub default_layouts: LayoutStack, // FIXME: require Send
     /// The ordered set of workspace tags to use on window manager startup
     pub tags: Vec<String>,
     /// Window classes that should always be assigned floating positions rather than tiled
@@ -52,7 +41,7 @@ impl Default for Config {
             focused_border: "#cc241dff".try_into().expect("valid hex code"),
             border_width: 2,
             focus_follow_mouse: true,
-            default_layouts: LayoutStack::default(),
+            // default_layouts: LayoutStack::default(),
             tags: strings(&["1", "2", "3", "4", "5", "6", "7", "8", "9"]),
             floating_classes: strings(&["dmenu", "dunst"]),
         }
@@ -64,8 +53,6 @@ impl Default for Config {
 /// running applications and associated windows.
 #[derive(Debug)]
 pub struct State {
-    pub app: cocoa::base::id,
-    pub pool: cocoa::base::id,
     pub config: Config,
     pub stack_set: StackSet<WinId>,
     pub apps: HashMap<Pid, OsxApp>,
@@ -75,15 +62,6 @@ pub struct State {
 
 impl State {
     pub fn try_new(config: Config) -> Result<Self> {
-        // Create the app itself
-        let (pool, app) = unsafe {
-            let pool = NSAutoreleasePool::new(nil);
-            let app = NSApp();
-            app.setActivationPolicy_(NSApplicationActivationPolicyRegular);
-
-            (pool, app)
-        };
-
         let mut display_rects: Vec<_> = cg_displays()?
             .into_iter()
             .map(|r| {
@@ -98,7 +76,8 @@ impl State {
         display_rects.sort_by_key(|r| (r.x, r.y));
 
         let mut stack_set = StackSet::try_new(
-            config.default_layouts.clone(),
+            // config.default_layouts.clone(),
+            LayoutStack::default(),
             config.tags.iter(),
             display_rects,
         )?;
@@ -107,8 +86,6 @@ impl State {
         let diff = Diff::new(ss.clone(), ss);
 
         let mut state = Self {
-            app,
-            pool,
             config,
             stack_set,
             apps: HashMap::new(),
@@ -121,19 +98,6 @@ impl State {
         state.update_known_apps_and_windows();
 
         Ok(state)
-    }
-
-    pub fn run(self) {
-        let global_observer = global_observer();
-        register_observers(global_observer);
-
-        unsafe {
-            let current_app = NSRunningApplication::currentApplication();
-            current_app.activateWithOptions_(
-                NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
-            );
-            self.app.run();
-        }
     }
 
     pub(crate) fn update_known_apps_and_windows(&mut self) {

@@ -27,6 +27,19 @@ use std::ffi::{CStr, c_void};
 pub type Pid = i32;
 pub type WinId = u32;
 
+pub(crate) const APP_NOTIFICATIONS: [&str; 2] = [
+    kAXWindowCreatedNotification,
+    kAXFocusedWindowChangedNotification,
+];
+
+pub(crate) const WIN_NOTIFICATIONS: [&str; 5] = [
+    kAXUIElementDestroyedNotification,
+    kAXWindowDeminiaturizedNotification,
+    kAXWindowMiniaturizedNotification,
+    kAXMovedNotification,
+    kAXResizedNotification,
+];
+
 macro_rules! set_attr {
     ($axwin:expr, $val:expr, $ty:expr, $name:expr) => {
         unsafe {
@@ -77,10 +90,7 @@ impl OsxWindow {
                 )
             };
             match OsxWindow::try_from_dict(&dict) {
-                Ok(info) => {
-                    println!("osxwindow created for {}", info.owner);
-                    infos.push(info);
-                }
+                Ok(info) => infos.push(info),
                 Err(penrose::Error::Custom(s)) if s == "Window not found" => (),
                 Err(e) => println!("{e} {dict:?}"),
             }
@@ -141,16 +151,12 @@ impl OsxWindow {
         let owner = get_string(dict, "kCGWindowOwnerName")?;
         let window_name = get_string(dict, "kCGWindowName").ok();
         let axref = axwin.as_concrete_TypeRef();
-        let observers = [
-            kAXUIElementDestroyedNotification,
-            kAXWindowDeminiaturizedNotification,
-            kAXWindowMiniaturizedNotification,
-            kAXMovedNotification,
-            kAXResizedNotification,
-        ]
-        .into_iter()
-        .map(|s| AXObserverWrapper::try_new(owner_pid, s, axref, std::ptr::null_mut()))
-        .collect::<Result<Vec<_>>>()?;
+        // disgusting
+        let id_ptr: *mut c_void = std::ptr::without_provenance_mut(win_id as usize);
+        let observers = WIN_NOTIFICATIONS
+            .into_iter()
+            .map(|s| AXObserverWrapper::try_new(owner_pid, s, axref, id_ptr))
+            .collect::<Result<Vec<_>>>()?;
 
         Ok(Self {
             win_id,
@@ -183,13 +189,12 @@ impl OsxApp {
                 .to_string_lossy()
                 .to_string();
             let axapp = AXUIElementCreateApplication(pid);
-            let observers = [
-                kAXWindowCreatedNotification,
-                kAXFocusedWindowChangedNotification,
-            ]
-            .into_iter()
-            .map(|s| AXObserverWrapper::try_new(pid, s, axapp, std::ptr::null_mut()))
-            .collect::<Result<Vec<_>>>()?;
+            // disgusting
+            let pid_ptr: *mut c_void = std::ptr::without_provenance_mut(pid as usize);
+            let observers = APP_NOTIFICATIONS
+                .into_iter()
+                .map(|s| AXObserverWrapper::try_new(pid, s, axapp, pid_ptr))
+                .collect::<Result<Vec<_>>>()?;
 
             Ok(Self {
                 pid,
