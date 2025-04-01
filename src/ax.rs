@@ -3,14 +3,16 @@ use crate::{
         self as ns, CFRetain, INSArray, INSNotificationCenter, INSRunningApplication, INSWorkspace,
         NSArray, NSRunningApplication, NSWorkspace, NSWorkspace_NSWorkspaceRunningApplications, id,
     },
-    win::{APP_NOTIFICATIONS, Pid, WIN_NOTIFICATIONS, WinId},
+    win::{Pid, WinId},
 };
 use accessibility::{attribute::AXAttribute, ui_element::AXUIElement};
 use accessibility_sys::{
     AXError, AXIsProcessTrustedWithOptions, AXObserverAddNotification, AXObserverCreate,
     AXObserverGetRunLoopSource, AXObserverRef, AXObserverRemoveNotification,
     AXUIElementCreateSystemWide, AXUIElementRef, AXUIElementSetMessagingTimeout, kAXErrorSuccess,
-    kAXTrustedCheckOptionPrompt,
+    kAXFocusedWindowChangedNotification, kAXMovedNotification, kAXResizedNotification,
+    kAXTrustedCheckOptionPrompt, kAXUIElementDestroyedNotification, kAXWindowCreatedNotification,
+    kAXWindowDeminiaturizedNotification, kAXWindowMiniaturizedNotification,
 };
 use core_foundation::{
     base::TCFType,
@@ -38,8 +40,22 @@ use std::{
     ffi::c_void,
     sync::{OnceLock, mpsc::Sender},
 };
+use tracing::error;
 
 pub(crate) static EVENT_SENDER: OnceLock<Sender<Event>> = OnceLock::new();
+
+pub(crate) const APP_NOTIFICATIONS: [&str; 2] = [
+    kAXWindowCreatedNotification,
+    kAXFocusedWindowChangedNotification,
+];
+
+pub(crate) const WIN_NOTIFICATIONS: [&str; 5] = [
+    kAXUIElementDestroyedNotification,
+    kAXWindowDeminiaturizedNotification,
+    kAXWindowMiniaturizedNotification,
+    kAXMovedNotification,
+    kAXResizedNotification,
+];
 
 #[derive(Debug)]
 pub(crate) enum Event {
@@ -50,9 +66,14 @@ pub(crate) enum Event {
     AppTerminated,
     AppHidden,
     AppUnhidden,
+    WindowCreated { pid: Pid },
+    FocusedWindowChanged { pid: Pid },
     // Window level
-    AxObserverWin { notification: String, win_id: WinId },
-    AxObserverApp { notification: String, pid: Pid },
+    UiElementDestroyed { id: WinId },
+    WindowDeminiturized { id: WinId },
+    WindowMiniturized { id: WinId },
+    WindowMoved { id: WinId },
+    WindowResized { id: WinId },
 }
 
 macro_rules! impl_handlers {
@@ -87,22 +108,23 @@ unsafe extern "C" fn ax_observer_callback(
     _observer: AXObserverRef,
     _element: AXUIElementRef,
     notification: CFStringRef,
-    refcon: *mut c_void,
+    p: *mut c_void,
 ) {
-    let notification = unsafe { CFString::wrap_under_get_rule(notification) }.to_string();
-    let evt = if WIN_NOTIFICATIONS.contains(&notification.as_str()) {
-        Event::AxObserverWin {
-            notification,
-            win_id: refcon.addr() as WinId,
+    let s = unsafe { CFString::wrap_under_get_rule(notification) }.to_string();
+
+    let evt = match s.as_str() {
+        kAXWindowCreatedNotification => Event::WindowCreated { pid: p.addr() as _ },
+        kAXFocusedWindowChangedNotification => Event::FocusedWindowChanged { pid: p.addr() as _ },
+        kAXUIElementDestroyedNotification => Event::UiElementDestroyed { id: p.addr() as _ },
+        kAXWindowDeminiaturizedNotification => Event::WindowDeminiturized { id: p.addr() as _ },
+        kAXWindowMiniaturizedNotification => Event::WindowMiniturized { id: p.addr() as _ },
+        kAXMovedNotification => Event::WindowMoved { id: p.addr() as _ },
+        kAXResizedNotification => Event::WindowResized { id: p.addr() as _ },
+
+        s => {
+            error!("dropping unknown notification: {s}");
+            return;
         }
-    } else if APP_NOTIFICATIONS.contains(&notification.as_str()) {
-        Event::AxObserverApp {
-            notification,
-            pid: refcon.addr() as Pid,
-        }
-    } else {
-        println!("dropping unknown notification: {notification}");
-        return;
     };
 
     if let Some(tx) = EVENT_SENDER.get() {
@@ -233,6 +255,9 @@ pub struct AXObserverWrapper {
     ax: AXUIElementRef,
     notif: CFString,
 }
+
+unsafe impl Send for AXObserverWrapper {}
+unsafe impl Sync for AXObserverWrapper {}
 
 impl Drop for AXObserverWrapper {
     fn drop(&mut self) {

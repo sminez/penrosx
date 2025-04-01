@@ -1,14 +1,11 @@
 use crate::{
-    ax::{AXObserverWrapper, get_axwindow},
+    ax::{APP_NOTIFICATIONS, AXObserverWrapper, WIN_NOTIFICATIONS, get_axwindow},
     nsworkspace::{INSRunningApplication, NSRunningApplication, NSString_NSStringDeprecated},
 };
 use accessibility::ui_element::AXUIElement;
 use accessibility_sys::{
     AXUIElementCreateApplication, AXUIElementSetAttributeValue, AXValueCreate, kAXErrorSuccess,
-    kAXFocusedWindowChangedNotification, kAXMovedNotification, kAXPositionAttribute,
-    kAXResizedNotification, kAXSizeAttribute, kAXUIElementDestroyedNotification,
-    kAXValueTypeCGPoint, kAXValueTypeCGSize, kAXWindowCreatedNotification,
-    kAXWindowDeminiaturizedNotification, kAXWindowMiniaturizedNotification,
+    kAXPositionAttribute, kAXSizeAttribute, kAXValueTypeCGPoint, kAXValueTypeCGSize,
 };
 use core_foundation::{
     base::{TCFType, ToVoid},
@@ -23,22 +20,10 @@ use core_foundation_sys::{
 use core_graphics::display::{self, CGDisplay, CGPoint, CGRect, CGSize};
 use penrose::{Result, custom_error};
 use std::ffi::{CStr, c_void};
+use tracing::error;
 
 pub type Pid = i32;
 pub type WinId = u32;
-
-pub(crate) const APP_NOTIFICATIONS: [&str; 2] = [
-    kAXWindowCreatedNotification,
-    kAXFocusedWindowChangedNotification,
-];
-
-pub(crate) const WIN_NOTIFICATIONS: [&str; 5] = [
-    kAXUIElementDestroyedNotification,
-    kAXWindowDeminiaturizedNotification,
-    kAXWindowMiniaturizedNotification,
-    kAXMovedNotification,
-    kAXResizedNotification,
-];
 
 macro_rules! set_attr {
     ($axwin:expr, $val:expr, $ty:expr, $name:expr) => {
@@ -61,16 +46,19 @@ macro_rules! set_attr {
 
 #[derive(Debug, Clone)]
 pub struct OsxWindow {
-    pub win_id: WinId,
-    pub owner_pid: Pid,
-    pub window_layer: i32, // do we only care about layer 0?
-    pub bounds: CGRect,
-    pub owner: String,
-    pub window_name: Option<String>,
+    pub(crate) win_id: WinId,
+    pub(crate) owner_pid: Pid,
+    pub(crate) window_layer: i32, // do we only care about layer 0?
+    pub(crate) bounds: CGRect,
+    pub(crate) owner: String,
+    pub(crate) window_name: Option<String>,
     // observers needs to be before axwin so we drop in the correct order
-    pub observers: Vec<AXObserverWrapper>,
-    pub axwin: AXUIElement,
+    pub(crate) observers: Vec<AXObserverWrapper>,
+    pub(crate) axwin: AXUIElement,
 }
+
+unsafe impl Send for OsxWindow {}
+unsafe impl Sync for OsxWindow {}
 
 impl OsxWindow {
     pub fn current_windows() -> Vec<Self> {
@@ -92,7 +80,7 @@ impl OsxWindow {
             match OsxWindow::try_from_dict(&dict) {
                 Ok(info) => infos.push(info),
                 Err(penrose::Error::Custom(s)) if s == "Window not found" => (),
-                Err(e) => println!("{e} {dict:?}"),
+                Err(e) => error!("unable to parse window dict {e} {dict:?}"),
             }
         }
 
@@ -173,13 +161,16 @@ impl OsxWindow {
 
 #[derive(Debug, Clone)]
 pub struct OsxApp {
-    pub pid: Pid,
-    pub name: String,
-    pub app: NSRunningApplication,
+    pub(crate) pid: Pid,
+    pub(crate) name: String,
+    pub(crate) app: NSRunningApplication,
     // observers needs to be before axapp so we drop in the correct order
-    pub observers: Vec<AXObserverWrapper>,
-    pub axapp: AXUIElement,
+    pub(crate) observers: Vec<AXObserverWrapper>,
+    pub(crate) axapp: AXUIElement,
 }
+
+unsafe impl Send for OsxApp {}
+unsafe impl Sync for OsxApp {}
 
 impl OsxApp {
     pub fn try_new(app: NSRunningApplication) -> Result<Self> {

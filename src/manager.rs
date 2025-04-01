@@ -9,7 +9,8 @@ use crate::{
         NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
         NSRunningApplication,
     },
-    state::{Config, State},
+    state::State,
+    win::{Pid, WinId},
 };
 use cocoa::{
     appkit::{
@@ -19,17 +20,19 @@ use cocoa::{
     foundation::NSAutoreleasePool,
 };
 use std::{
+    process::exit,
     sync::mpsc::{Receiver, channel},
     thread::spawn,
 };
+use tracing::info;
 
 pub struct WindowManager {
-    cfg: Config,
+    state: State,
 }
 
 impl WindowManager {
-    pub fn new(cfg: Config) -> Self {
-        Self { cfg }
+    pub fn new(state: State) -> Self {
+        Self { state }
     }
 
     pub fn run(self) {
@@ -39,7 +42,6 @@ impl WindowManager {
 
         set_ax_timeout();
 
-        // Create the app itself
         let (_pool, app) = unsafe {
             let pool = NSAutoreleasePool::new(nil);
             let app = NSApp();
@@ -52,11 +54,9 @@ impl WindowManager {
         EVENT_SENDER.set(tx).unwrap();
 
         spawn(move || {
-            let state = State::try_new(self.cfg).unwrap();
-            handle_events(state, rx);
+            self.handle_events(rx);
         });
 
-        std::thread::sleep(std::time::Duration::from_millis(100));
         let global_observer = global_observer();
         register_observers(global_observer);
 
@@ -69,21 +69,70 @@ impl WindowManager {
 
         unsafe { app.run() };
     }
-}
 
-fn handle_events(state: State, rx: Receiver<Event>) {
-    for evt in rx.into_iter() {
-        println!("got event: {evt:?}");
-        if let Event::AxObserverWin { win_id, .. } = evt {
-            match state.windows.get(&win_id) {
-                None => println!("ax notification for unknown window"),
-                Some(win) => println!("window is for {}", win.owner),
-            }
-        } else if let Event::AxObserverApp { pid, .. } = evt {
-            match state.apps.get(&pid) {
-                None => println!("ax notification for unknown app"),
-                Some(app) => println!("app is {}", app.name),
+    fn handle_events(mut self, rx: Receiver<Event>) {
+        use Event::*;
+
+        for evt in rx.into_iter() {
+            info!("got event: {evt:?}");
+            match evt {
+                AppActivated | AppDeactivated => self.handle_app_focus(),
+                AppLaunched | AppTerminated => self.handle_app_open_close(),
+                AppHidden | AppUnhidden => self.handle_app_visibility(),
+                WindowCreated { pid } => self.handle_new_window(pid),
+                UiElementDestroyed { id } => self.handle_window_close(id),
+                FocusedWindowChanged { pid } => self.handle_app_focused_window(pid),
+                WindowMoved { id } | WindowResized { id } => self.handle_window_position(id),
+                WindowMiniturized { id } | WindowDeminiturized { id } => {
+                    self.handle_window_visibility(id)
+                }
             }
         }
+
+        // Ensure that we exit when _our_ event loop completes even if the OSX app loop is still
+        // ongoing
+        exit(0);
     }
+
+    fn handle_app_focus(&mut self) {
+        info!("app focus changed, refreshing");
+        self.refresh();
+    }
+
+    fn handle_app_open_close(&mut self) {
+        info!("running apps changed, refreshing");
+        self.refresh();
+    }
+
+    fn handle_app_visibility(&mut self) {
+        info!("app visibility changed, refreshing");
+        self.refresh();
+    }
+
+    fn handle_new_window(&mut self, pid: Pid) {
+        info!("new window created for {pid}");
+        self.refresh();
+    }
+
+    fn handle_app_focused_window(&mut self, pid: Pid) {
+        info!("focused window for app changed {pid}");
+        self.refresh();
+    }
+
+    fn handle_window_close(&mut self, id: WinId) {
+        info!("window closed {id}");
+        self.refresh();
+    }
+
+    fn handle_window_position(&mut self, id: WinId) {
+        info!("window position changed {id}");
+        self.refresh();
+    }
+
+    fn handle_window_visibility(&mut self, id: WinId) {
+        info!("window visibility changed {id}");
+        self.refresh();
+    }
+
+    fn refresh(&mut self) {}
 }

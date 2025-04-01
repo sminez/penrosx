@@ -24,7 +24,7 @@ pub struct Config {
     /// Whether or not the mouse entering a new window should set focus
     pub focus_follow_mouse: bool,
     /// The stack of layouts to use for each workspace
-    // pub default_layouts: LayoutStack, // FIXME: require Send
+    pub default_layouts: LayoutStack,
     /// The ordered set of workspace tags to use on window manager startup
     pub tags: Vec<String>,
     /// Window classes that should always be assigned floating positions rather than tiled
@@ -41,7 +41,7 @@ impl Default for Config {
             focused_border: "#cc241dff".try_into().expect("valid hex code"),
             border_width: 2,
             focus_follow_mouse: true,
-            // default_layouts: LayoutStack::default(),
+            default_layouts: LayoutStack::default(),
             tags: strings(&["1", "2", "3", "4", "5", "6", "7", "8", "9"]),
             floating_classes: strings(&["dmenu", "dunst"]),
         }
@@ -76,8 +76,7 @@ impl State {
         display_rects.sort_by_key(|r| (r.x, r.y));
 
         let mut stack_set = StackSet::try_new(
-            // config.default_layouts.clone(),
-            LayoutStack::default(),
+            config.default_layouts.clone(),
             config.tags.iter(),
             display_rects,
         )?;
