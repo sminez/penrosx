@@ -269,7 +269,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 [[package]]
 name = "penrose"
 version = "0.4.0"
-source = "git+https://github.com/sminez/penrose.git#7be1a444d49e461ccce38e87386ca29b10238fe9"
+source = "git+https://github.com/sminez/penrose.git#ffc74b0e167d2141863dc1e2c3f870c3a8f397ce"
 dependencies = [
  "anymap",
  "bitflags",

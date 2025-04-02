@@ -1,15 +1,13 @@
 //! OSX specific state that we track
 use crate::{
-    ax::running_applications,
     nsworkspace::{INSRunningApplication, NSRunningApplication},
+    sys::{cg_displays, running_applications},
     win::{OsxApp, OsxWindow, Pid, WinId},
 };
-use core_graphics::display::{CGDisplay, CGRect};
 use penrose::{
     Color, Result,
     core::layout::LayoutStack,
-    custom_error,
-    pure::{Diff, StackSet, geometry::Rect},
+    pure::{Diff, ScreenClients, Snapshot, StackSet, geometry::Rect},
 };
 use std::collections::HashMap;
 
@@ -62,17 +60,7 @@ pub struct State {
 
 impl State {
     pub fn try_new(config: Config) -> Result<Self> {
-        let mut display_rects: Vec<_> = cg_displays()?
-            .into_iter()
-            .map(|r| {
-                Rect::new(
-                    r.origin.x as i32,
-                    r.origin.y as i32,
-                    r.size.width as u32,
-                    r.size.height as u32,
-                )
-            })
-            .collect();
+        let mut display_rects = cg_displays()?;
         display_rects.sort_by_key(|r| (r.x, r.y));
 
         let mut stack_set = StackSet::try_new(
@@ -92,9 +80,8 @@ impl State {
             diff,
         };
 
-        // TODO: updating this state will potentially invalidate the IDs held within the stack set
-        // so we also need to prune from there if things have been added or removed
         state.update_known_apps_and_windows();
+        state.manage_new_windows();
 
         Ok(state)
     }
@@ -121,14 +108,64 @@ impl State {
             .map(|win| (win.win_id, win))
             .collect();
     }
-}
 
-fn cg_displays() -> Result<Vec<CGRect>> {
-    let displays: Vec<_> = CGDisplay::active_displays()
-        .map_err(|e| custom_error!("error reading cg displays: {}", e))?
-        .into_iter()
-        .map(|id| CGDisplay::new(id).bounds())
-        .collect();
+    fn manage_new_windows(&mut self) {
+        let current_idx = self.stack_set.current_screen().index();
+        for (id, win) in self.windows.iter() {
+            if !self.stack_set.contains(id) {
+                let ix = self
+                    .stack_set
+                    .screens()
+                    .position(|s| s.geometry().contains(&win.bounds))
+                    .unwrap_or(0);
+                self.stack_set.focus_screen(ix);
+                self.stack_set.insert(*id);
+            }
+        }
+        self.stack_set.focus_screen(current_idx);
+    }
 
-    Ok(displays)
+    pub(crate) fn position_and_snapshot(&mut self) -> Snapshot<WinId> {
+        let positions = self.visible_client_positions();
+        self.stack_set.snapshot(positions)
+    }
+
+    /// Run the per-workspace layouts to get a screen position for each visible client. Floating clients
+    /// are placed above stacked clients, clients per workspace are stacked in the order they are returned
+    /// from the layout.
+    pub(crate) fn visible_client_positions(&mut self) -> Vec<(WinId, Rect)> {
+        let mut float_positions: Vec<(WinId, Rect)> = Vec::new();
+        let mut positions: Vec<(WinId, Rect)> = Vec::new();
+
+        let scs: Vec<ScreenClients<WinId>> = self
+            .stack_set
+            .screens()
+            // not handling floating clients for now
+            .map(|s| s.screen_clients(&HashMap::default()))
+            .collect();
+
+        for (i, sc) in scs.into_iter().enumerate() {
+            let ScreenClients {
+                floating,
+                tiling,
+                tag,
+                r_s,
+            } = sc;
+
+            // Sort out the floating client positions first
+            for (c, r_c) in floating.iter() {
+                float_positions.push((*c, r_c.applied_to(&r_s)));
+            }
+
+            // Not handling hooks
+            let s = self.stack_set.screens_mut().nth(i).unwrap();
+            let stack_positions = s.workspace.apply_layout(&tag, &tiling, r_s);
+            positions.extend(stack_positions.into_iter().rev());
+        }
+
+        float_positions.reverse();
+        positions.extend(float_positions);
+
+        positions
+    }
 }

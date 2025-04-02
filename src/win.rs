@@ -1,6 +1,6 @@
 use crate::{
-    ax::{APP_NOTIFICATIONS, AXObserverWrapper, WIN_NOTIFICATIONS, get_axwindow},
     nsworkspace::{INSRunningApplication, NSRunningApplication, NSString_NSStringDeprecated},
+    sys::{APP_NOTIFICATIONS, AXObserverWrapper, WIN_NOTIFICATIONS, get_axwindow, rect_from_cg},
 };
 use accessibility::ui_element::AXUIElement;
 use accessibility_sys::{
@@ -18,12 +18,12 @@ use core_foundation_sys::{
     string::CFStringRef,
 };
 use core_graphics::display::{self, CGDisplay, CGPoint, CGRect, CGSize};
-use penrose::{Result, custom_error};
+use penrose::{Result, Xid, custom_error, pure::geometry::Rect};
 use std::ffi::{CStr, c_void};
 use tracing::error;
 
 pub type Pid = i32;
-pub type WinId = u32;
+pub type WinId = Xid;
 
 macro_rules! set_attr {
     ($axwin:expr, $val:expr, $ty:expr, $name:expr) => {
@@ -49,7 +49,7 @@ pub struct OsxWindow {
     pub(crate) win_id: WinId,
     pub(crate) owner_pid: Pid,
     pub(crate) window_layer: i32, // do we only care about layer 0?
-    pub(crate) bounds: CGRect,
+    pub(crate) bounds: Rect,
     pub(crate) owner: String,
     pub(crate) window_name: Option<String>,
     // observers needs to be before axwin so we drop in the correct order
@@ -147,10 +147,10 @@ impl OsxWindow {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(Self {
-            win_id,
+            win_id: Xid::from(win_id),
             owner_pid,
             window_layer,
-            bounds,
+            bounds: rect_from_cg(bounds),
             owner,
             window_name,
             axwin,

@@ -16,9 +16,10 @@ fn main() -> anyhow::Result<()> {
 
     set_global_default(subscriber).context("unable to set a global tracing subscriber")?;
     let state = State::try_new(Config::default())?;
-    let wm = WindowManager::new(state);
+    let mut wm = WindowManager::new(state);
+    wm.refresh();
 
-    wm.run();
+    // wm.run();
 
     Ok(())
 }

@@ -27,7 +27,7 @@ use core_foundation_sys::{
     },
     number::kCFBooleanTrue,
 };
-use core_graphics::display::CGWindowID;
+use core_graphics::display::{CGDisplay, CGRect, CGWindowID};
 use objc::{
     class,
     declare::ClassDecl,
@@ -35,7 +35,7 @@ use objc::{
     runtime::{Object, Sel},
     sel, sel_impl,
 };
-use penrose::{Result, custom_error};
+use penrose::{Result, custom_error, pure::geometry::Rect};
 use std::{
     ffi::c_void,
     sync::{OnceLock, mpsc::Sender},
@@ -115,11 +115,21 @@ unsafe extern "C" fn ax_observer_callback(
     let evt = match s.as_str() {
         kAXWindowCreatedNotification => Event::WindowCreated { pid: p.addr() as _ },
         kAXFocusedWindowChangedNotification => Event::FocusedWindowChanged { pid: p.addr() as _ },
-        kAXUIElementDestroyedNotification => Event::UiElementDestroyed { id: p.addr() as _ },
-        kAXWindowDeminiaturizedNotification => Event::WindowDeminiturized { id: p.addr() as _ },
-        kAXWindowMiniaturizedNotification => Event::WindowMiniturized { id: p.addr() as _ },
-        kAXMovedNotification => Event::WindowMoved { id: p.addr() as _ },
-        kAXResizedNotification => Event::WindowResized { id: p.addr() as _ },
+        kAXUIElementDestroyedNotification => Event::UiElementDestroyed {
+            id: (p.addr() as u32).into(),
+        },
+        kAXWindowDeminiaturizedNotification => Event::WindowDeminiturized {
+            id: (p.addr() as u32).into(),
+        },
+        kAXWindowMiniaturizedNotification => Event::WindowMiniturized {
+            id: (p.addr() as u32).into(),
+        },
+        kAXMovedNotification => Event::WindowMoved {
+            id: (p.addr() as u32).into(),
+        },
+        kAXResizedNotification => Event::WindowResized {
+            id: (p.addr() as u32).into(),
+        },
 
         s => {
             error!("dropping unknown notification: {s}");
@@ -295,4 +305,23 @@ impl AXObserverWrapper {
             Ok(Self { obs, ax, notif })
         }
     }
+}
+
+pub(crate) fn cg_displays() -> Result<Vec<Rect>> {
+    let displays: Vec<_> = CGDisplay::active_displays()
+        .map_err(|e| custom_error!("error reading cg displays: {}", e))?
+        .into_iter()
+        .map(|id| rect_from_cg(CGDisplay::new(id).bounds()))
+        .collect();
+
+    Ok(displays)
+}
+
+pub(crate) fn rect_from_cg(r: CGRect) -> Rect {
+    Rect::new(
+        r.origin.x as i32,
+        r.origin.y as i32,
+        r.size.width as u32,
+        r.size.height as u32,
+    )
 }

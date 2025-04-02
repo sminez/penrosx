@@ -1,15 +1,15 @@
 //! Window manager logic
 use crate::{
-    ax::{
-        EVENT_SENDER, Event, global_observer, proc_is_ax_trusted, register_observers,
-        set_ax_timeout,
-    },
     nsworkspace::{
         INSRunningApplication,
         NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
         NSRunningApplication,
     },
     state::State,
+    sys::{
+        EVENT_SENDER, Event, global_observer, proc_is_ax_trusted, register_observers,
+        set_ax_timeout,
+    },
     win::{Pid, WinId},
 };
 use cocoa::{
@@ -134,5 +134,9 @@ impl WindowManager {
         self.refresh();
     }
 
-    fn refresh(&mut self) {}
+    pub fn refresh(&mut self) {
+        let snapshot = self.state.position_and_snapshot();
+        println!("{snapshot:#?}");
+        self.state.diff.update(snapshot);
+    }
 }
