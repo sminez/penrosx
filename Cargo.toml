@@ -17,6 +17,7 @@ core-foundation = "0.10.0"
 core-foundation-sys = "0.8.7"
 core-graphics = "0.24.0"
 objc = "0.2"
-penrose = { git = "https://github.com/sminez/penrose.git", branch = "wip/generic-conn", default-features = false }
+# penrose = { git = "https://github.com/sminez/penrose.git", branch = "wip/generic-conn", default-features = false }
+penrose = { path = "../penrose", default-features = false }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }

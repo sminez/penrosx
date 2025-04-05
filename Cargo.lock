@@ -269,7 +269,6 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 [[package]]
 name = "penrose"
 version = "0.4.0"
-source = "git+https://github.com/sminez/penrose.git?branch=wip%2Fgeneric-conn#56fc77a6c290ca2bcefd593abc27bb6d5f673fe7"
 dependencies = [
  "anymap",
  "bitflags",

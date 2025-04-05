@@ -42,7 +42,7 @@ use std::{
     },
     thread::spawn,
 };
-use tracing::debug;
+use tracing::{debug, info};
 
 const ROOT: WinId = WinId(0);
 
@@ -194,9 +194,9 @@ impl OsxConn {
         };
 
         spawn(move || {
-            let mut wm = WindowManager::new(config, key_bindings, mouse_bindings, self)?;
-            init(&mut wm)?;
-            wm.run()
+            let mut wm = WindowManager::new(config, key_bindings, mouse_bindings, self).unwrap();
+            init(&mut wm).unwrap();
+            wm.run().unwrap()
         });
 
         let global_observer = global_observer();
@@ -213,8 +213,16 @@ impl OsxConn {
     }
 
     fn manage_new_windows(&self, state: &mut State<Self>) -> Result<()> {
-        let conn_state = self.conn_state.lock().unwrap();
-        for (id, _) in conn_state.windows.iter() {
+        let ids: Vec<_> = self
+            .conn_state
+            .lock()
+            .unwrap()
+            .windows
+            .values()
+            .map(|win| win.win_id)
+            .collect();
+
+        for id in ids.iter() {
             if !state.client_set.contains(id) {
                 self.manage(*id, state)?;
             }
@@ -508,6 +516,7 @@ impl Conn for OsxConn {
     }
 
     fn manage_existing_clients(&self, state: &mut State<Self>) -> Result<()> {
+        info!("managing existing clients");
         self.conn_state
             .lock()
             .unwrap()
@@ -516,7 +525,6 @@ impl Conn for OsxConn {
         let current_idx = state.client_set.current_screen().index();
         self.manage_new_windows(state)?;
         state.client_set.focus_screen(current_idx);
-
-        Ok(())
+        self.refresh(state)
     }
 }
