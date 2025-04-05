@@ -28,7 +28,7 @@ use core_foundation_sys::{
     },
     number::kCFBooleanTrue,
 };
-use core_graphics::display::{CGDisplay, CGRect, CGWindowID};
+use core_graphics::display::{CGRect, CGWindowID};
 use objc::{
     class,
     declare::ClassDecl,
@@ -342,16 +342,6 @@ impl AXObserverWrapper {
             Ok(Self { obs, ax, notif })
         }
     }
-}
-
-pub(crate) fn cg_displays() -> Result<Vec<Rect>> {
-    let displays: Vec<_> = CGDisplay::active_displays()
-        .map_err(|e| custom_error!("error reading cg displays: {}", e))?
-        .into_iter()
-        .map(|id| rect_from_cg(CGDisplay::new(id).bounds()))
-        .collect();
-
-    Ok(displays)
 }
 
 pub(crate) fn rect_from_cg(r: CGRect) -> Rect {
