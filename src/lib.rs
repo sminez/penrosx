@@ -6,8 +6,7 @@
 #![allow(non_snake_case)]
 #![allow(clippy::all)]
 
-pub mod manager;
+pub mod conn;
 pub mod nsworkspace;
-pub mod state;
 pub mod sys;
 pub mod win;
