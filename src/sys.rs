@@ -36,7 +36,7 @@ use objc::{
     runtime::{Object, Sel},
     sel, sel_impl,
 };
-use penrose::{Result, WinId, custom_error, pure::geometry::Rect};
+use penrose::{Result, WinId, core::bindings::KeyCode, custom_error, pure::geometry::Rect};
 use std::{
     ffi::c_void,
     fmt,
@@ -76,6 +76,8 @@ pub enum Event {
     WindowDeminiturized { id: WinId },
     WindowMoved { id: WinId },
     WindowResized { id: WinId },
+    // Bindings
+    KeyPress { k: KeyCode },
 }
 
 impl fmt::Display for Event {
@@ -95,6 +97,7 @@ impl fmt::Display for Event {
             WindowDeminiturized { .. } => write!(f, "WindowDeminiturized"),
             WindowMoved { .. } => write!(f, "WindowMoved"),
             WindowResized { .. } => write!(f, "WindowResized"),
+            KeyPress { .. } => write!(f, "KeyPress"),
         }
     }
 }

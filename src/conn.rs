@@ -39,11 +39,11 @@ use std::{
     collections::HashMap,
     sync::{
         Mutex,
-        mpsc::{Receiver, channel},
+        mpsc::{Receiver, Sender, channel},
     },
     thread::spawn,
 };
-use tracing::info;
+use tracing::{error, info, trace};
 
 const ROOT: WinId = WinId(0);
 
@@ -175,6 +175,11 @@ impl OsxConn {
         }
     }
 
+    /// Get a copy of the sender required to inject events into the connection event stream
+    pub fn event_tx(&self) -> Sender<Event> {
+        EVENT_SENDER.get().unwrap().clone()
+    }
+
     pub fn init_wm_and_run(
         self,
         config: Config<Self>,
@@ -303,6 +308,23 @@ impl OsxConn {
     fn handle_window_deminiturized(&self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
         Ok(())
     }
+
+    fn handle_keypress(
+        &self,
+        key: KeyCode,
+        bindings: &mut KeyBindings<Self>,
+        state: &mut State<Self>,
+    ) -> Result<()> {
+        if let Some(action) = bindings.get_mut(&key) {
+            trace!(?key, "running user keybinding");
+            if let Err(error) = action.call(state, self) {
+                error!(%error, ?key, "error running user keybinding");
+                return Err(error);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Conn for OsxConn {
@@ -319,7 +341,7 @@ impl Conn for OsxConn {
     fn handle_event(
         &self,
         evt: Event,
-        _key_bindings: &mut KeyBindings<Self>,
+        key_bindings: &mut KeyBindings<Self>,
         _mouse_bindings: &mut MouseBindings<Self>,
         state: &mut State<Self>,
     ) -> Result<()> {
@@ -338,6 +360,8 @@ impl Conn for OsxConn {
             WindowDeminiturized { id } => self.handle_window_deminiturized(id, state),
             WindowMiniturized { id } => self.handle_window_miniturized(id, state),
             WindowMoved { id } | WindowResized { id } => self.handle_window_position(id, state),
+
+            KeyPress { k } => self.handle_keypress(k, key_bindings, state),
 
             AppDeactivated { .. } => Ok(()),
         }
