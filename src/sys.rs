@@ -42,7 +42,7 @@ use std::{
     fmt,
     sync::{OnceLock, mpsc::Sender},
 };
-use tracing::error;
+use tracing::{error, trace};
 
 pub(crate) static EVENT_SENDER: OnceLock<Sender<Event>> = OnceLock::new();
 
@@ -103,19 +103,28 @@ macro_rules! impl_handlers {
     ($($fn:ident, $enum:ident;)+) => {
         $(extern "C" fn $fn(_this: &mut Object, _cmd: Sel, id: id) {
             unsafe {
+                trace!(?id, "workspace level notification received");
                 let pid = pid_from_user_info(NSNotification(id).userInfo());
-                _ = EVENT_SENDER.get().unwrap().send(Event::$enum { pid });
+                trace!(?pid, "pid extracted");
+                if let Some(tx) = EVENT_SENDER.get() {
+                    let evt = Event::$enum { pid };
+                    trace!(?evt, "sending event");
+                    _ = tx.send(evt);
+                }
             }
         })+
 
         pub fn global_observer() -> id {
+            trace!("creating global observer");
             let sup = class!(NSObject);
             let mut decl = ClassDecl::new("GlobalObserver", sup).unwrap();
             unsafe {
                 $(decl.add_method(sel!($fn:), $fn as extern "C" fn(&mut Object, Sel, id));)+
                 let cls = decl.register();
 
-                msg_send![cls, new]
+                let obs = msg_send![cls, new];
+                trace!("global observer created");
+                obs
             }
         }
     };
@@ -147,9 +156,9 @@ unsafe extern "C" fn ax_observer_callback(
     notification: CFStringRef,
     p: *mut c_void,
 ) {
-    let s = unsafe { CFString::wrap_under_get_rule(notification) }.to_string();
+    let notif = unsafe { CFString::wrap_under_get_rule(notification) }.to_string();
 
-    let evt = match s.as_str() {
+    let evt = match notif.as_str() {
         kAXWindowCreatedNotification => Event::WindowCreated { pid: p.addr() as _ },
         kAXFocusedWindowChangedNotification => Event::FocusedWindowChanged { pid: p.addr() as _ },
         kAXUIElementDestroyedNotification => Event::UiElementDestroyed {
@@ -175,6 +184,7 @@ unsafe extern "C" fn ax_observer_callback(
     };
 
     if let Some(tx) = EVENT_SENDER.get() {
+        trace!(?evt, "ax observer notification received");
         _ = tx.send(evt);
     }
 }
@@ -247,9 +257,12 @@ pub fn register_observers(observer: id) {
             ),
         ];
 
+        trace!("registering workspace observers");
         for (name, selector) in handlers {
+            trace!(?name, "registering workspace observer");
             nc.addObserver_selector_name_object_(observer, selector, name, std::ptr::null_mut());
         }
+        trace!("workspace observers registered");
     }
 }
 

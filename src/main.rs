@@ -18,7 +18,7 @@ use tracing_subscriber::FmtSubscriber;
 
 fn main() -> anyhow::Result<()> {
     let builder = FmtSubscriber::builder()
-        .with_env_filter("debug")
+        .with_env_filter("trace")
         .with_writer(stdout);
     let subscriber = builder.finish();
     set_global_default(subscriber).context("unable to set a global tracing subscriber")?;
