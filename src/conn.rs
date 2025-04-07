@@ -201,7 +201,7 @@ impl OsxConn {
         config: Config<Self>,
         key_bindings: KeyBindings<Self>,
         mouse_bindings: MouseBindings<Self>,
-        mut init: impl FnMut(&mut WindowManager<Self>) -> Result<()> + Send + 'static,
+        init: impl FnOnce(&mut WindowManager<Self>) -> Result<()> + Send + 'static,
     ) {
         if !proc_is_ax_trusted() {
             panic!("process is not trusted for the AX API");
@@ -581,11 +581,9 @@ impl Conn for OsxConn {
         None
     }
 
-    fn set_client_border_color(&self, _id: WinId, _color: impl Into<Color>) -> Result<()> {
-        Ok(()) // TODO: add support
-    }
+    // https://github.com/cmacrae/limelight/blob/master/src/main.c#L200
 
-    fn set_client_border_width(&self, _id: WinId, _w: u32) -> Result<()> {
+    fn set_client_border_color(&self, _id: WinId, _color: impl Into<Color>) -> Result<()> {
         Ok(()) // TODO: add support
     }
 
