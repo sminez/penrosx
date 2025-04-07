@@ -231,7 +231,6 @@ impl OsxWindow {
 
 #[derive(Debug, Clone)]
 pub struct OsxApp {
-    pub(crate) pid: Pid,
     pub(crate) name: String,
     pub(crate) app: NSRunningApplication,
     // observers needs to be before axapp so we drop in the correct order
@@ -258,7 +257,6 @@ impl OsxApp {
                 .collect::<Result<Vec<_>>>()?;
 
             Ok(Self {
-                pid,
                 name,
                 app,
                 axapp: AXUIElement::wrap_under_get_rule(axapp),

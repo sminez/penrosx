@@ -11,7 +11,7 @@ use crate::{
     },
     win::{OsxApp, OsxWindow, Pid},
 };
-use accessibility::{AXAttribute, AXUIElement};
+use accessibility::AXUIElement;
 use cocoa::{
     appkit::{
         NSApp, NSApplication, NSApplicationActivationPolicy::NSApplicationActivationPolicyRegular,
@@ -19,7 +19,6 @@ use cocoa::{
     base::nil,
     foundation::NSAutoreleasePool,
 };
-use core_foundation::boolean::CFBoolean;
 use core_graphics::{
     display::{CGDisplay, CGPoint},
     event::CGEvent,
@@ -78,6 +77,7 @@ macro_rules! app {
 struct ConnState {
     apps: HashMap<Pid, OsxApp>,
     windows: HashMap<WinId, OsxWindow>,
+    hide_pt: Point,
 }
 
 impl ConnState {
@@ -180,8 +180,24 @@ impl OsxConn {
         EVENT_SENDER.get().unwrap().clone()
     }
 
+    fn set_hide_pt(&mut self) -> Result<()> {
+        let r_last_screen = self
+            .screen_details()?
+            .into_iter()
+            .last()
+            .ok_or(Error::NoScreens)?;
+
+        let mut state = self.conn_state.lock().unwrap();
+        state.hide_pt = Point::new(
+            r_last_screen.x + r_last_screen.w as i32 - 1,
+            r_last_screen.y + r_last_screen.h as i32 - 1,
+        );
+
+        Ok(())
+    }
+
     pub fn init_wm_and_run(
-        self,
+        mut self,
         config: Config<Self>,
         key_bindings: KeyBindings<Self>,
         mouse_bindings: MouseBindings<Self>,
@@ -192,6 +208,7 @@ impl OsxConn {
         }
 
         set_ax_timeout();
+        self.set_hide_pt().unwrap();
 
         let (_pool, app) = unsafe {
             let pool = NSAutoreleasePool::new(nil);
@@ -434,41 +451,56 @@ impl Conn for OsxConn {
         })
     }
 
-    // show/hide based on https://github.com/koekeishiya/yabai/blob/527b0aa7c259637138d3d7468b63e3a9eb742d30/src/window_manager.c#L2045
-
-    fn show_client(&self, id: WinId) -> Result<()> {
-        let mut state = self.conn_state.lock().unwrap();
-        state.with_suppressed_animations(id, |win| {
-            let is_minimised = win
-                .axwin
-                .attribute(&AXAttribute::minimized())
-                .map_err(|e| custom_error!("unable to read minimised attr: {}", e))?;
-            if is_minimised == CFBoolean::false_value() {
-                return Ok(());
-            }
-
-            win.axwin
-                .set_attribute(&AXAttribute::minimized(), false)
-                .map_err(|e| custom_error!("error un-minimizing window: {}", e))
-        })
+    fn show_client(&self, _id: WinId) -> Result<()> {
+        Ok(())
     }
 
     fn hide_client(&self, id: WinId) -> Result<()> {
         let mut state = self.conn_state.lock().unwrap();
+        let p = state.hide_pt;
         state.with_suppressed_animations(id, |win| {
-            let is_minimised = win
-                .axwin
-                .attribute(&AXAttribute::minimized())
-                .map_err(|e| custom_error!("unable to read minimised attr: {}", e))?;
-            if is_minimised == CFBoolean::true_value() {
-                return Ok(());
-            }
-
-            win.axwin
-                .set_attribute(&AXAttribute::minimized(), true)
-                .map_err(|e| custom_error!("error minimizing window: {}", e))
+            win.set_pos(p.x as f64, p.y as f64)?;
+            win.bounds.x = p.x;
+            win.bounds.y = p.y;
+            Ok(())
         })
     }
+
+    // alternate show/hide based on https://github.com/koekeishiya/yabai/blob/527b0aa7c259637138d3d7468b63e3a9eb742d30/src/window_manager.c#L2045
+
+    // fn show_client(&self, id: WinId) -> Result<()> {
+    //     let mut state = self.conn_state.lock().unwrap();
+    //     state.with_suppressed_animations(id, |win| {
+    //         let is_minimised = win
+    //             .axwin
+    //             .attribute(&AXAttribute::minimized())
+    //             .map_err(|e| custom_error!("unable to read minimised attr: {}", e))?;
+    //         if is_minimised == CFBoolean::false_value() {
+    //             return Ok(());
+    //         }
+
+    //         win.axwin
+    //             .set_attribute(&AXAttribute::minimized(), false)
+    //             .map_err(|e| custom_error!("error un-minimizing window: {}", e))
+    //     })
+    // }
+
+    // fn hide_client(&self, id: WinId) -> Result<()> {
+    //     let mut state = self.conn_state.lock().unwrap();
+    //     state.with_suppressed_animations(id, |win| {
+    //         let is_minimised = win
+    //             .axwin
+    //             .attribute(&AXAttribute::minimized())
+    //             .map_err(|e| custom_error!("unable to read minimised attr: {}", e))?;
+    //         if is_minimised == CFBoolean::true_value() {
+    //             return Ok(());
+    //         }
+
+    //         win.axwin
+    //             .set_attribute(&AXAttribute::minimized(), true)
+    //             .map_err(|e| custom_error!("error minimizing window: {}", e))
+    //     })
+    // }
 
     fn withdraw_client(&self, _id: WinId) -> Result<()> {
         Ok(()) // nothing to do
@@ -533,7 +565,9 @@ impl Conn for OsxConn {
         // If we are able to pull in state for the window we should be managing it: the
         // construction of OsxWindow errors for windows we don't want to manage
         let mut state = self.conn_state.lock().unwrap();
-        state.win_prop(id, |_| true).unwrap_or_default()
+        state
+            .win_prop(id, |win| win.window_layer == 0)
+            .unwrap_or_default()
     }
 
     fn client_is_fullscreen(&self, id: WinId) -> bool {
