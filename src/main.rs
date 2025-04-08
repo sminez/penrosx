@@ -23,7 +23,7 @@ use tracing_subscriber::FmtSubscriber;
 
 fn main() -> anyhow::Result<()> {
     let builder = FmtSubscriber::builder()
-        .with_env_filter("trace")
+        .with_env_filter("debug")
         .with_writer(stdout);
     let subscriber = builder.finish();
     set_global_default(subscriber).context("unable to set a global tracing subscriber")?;
@@ -64,7 +64,7 @@ fn raw_key_bindings() -> HashMap<String, Box<dyn KeyEventHandler<OsxConn>>> {
         "Super+Shift+j" => modify_with(|cs| cs.swap_down()),
         "Super+Shift+k" => modify_with(|cs| cs.swap_up()),
         "Super+Shift+q" => modify_with(|cs| cs.kill_focused()),
-        "Super+Tab" => modify_with(|cs| cs.toggle_tag()),
+        "Super+Alt+Tab" => modify_with(|cs| cs.toggle_tag()),
         "Super+bracketright" => modify_with(|cs| cs.next_screen()),
         "Super+bracketleft" => modify_with(|cs| cs.previous_screen()),
         "Super+Shift+bracketright" => modify_with(|cs| cs.drag_workspace_forward()),
@@ -84,7 +84,7 @@ fn raw_key_bindings() -> HashMap<String, Box<dyn KeyEventHandler<OsxConn>>> {
                 modify_with(move |client_set| client_set.focus_tag(tag)),
             ),
             (
-                format!("Super+Shift+{tag}"),
+                format!("Super+Alt+{tag}"),
                 modify_with(move |client_set| client_set.move_focused_to_tag(tag)),
             ),
         ]);

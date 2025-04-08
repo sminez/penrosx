@@ -36,13 +36,10 @@ use penrose::{
 };
 use std::{
     collections::HashMap,
-    sync::{
-        Mutex,
-        mpsc::{Receiver, Sender, channel},
-    },
+    sync::mpsc::{Receiver, Sender, channel},
     thread::spawn,
 };
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace, warn};
 
 const ROOT: WinId = WinId(0);
 
@@ -73,14 +70,79 @@ macro_rules! app {
     };
 }
 
-#[derive(Debug, Default)]
-struct ConnState {
+impl ConnEvent for Event {
+    fn requires_pointer_warp(&self) -> bool {
+        true
+    }
+}
+
+#[derive(Debug)]
+pub struct OsxConn {
     apps: HashMap<Pid, OsxApp>,
     windows: HashMap<WinId, OsxWindow>,
     hide_pt: Point,
+    rx: Receiver<Event>,
 }
 
-impl ConnState {
+impl OsxConn {
+    pub fn new() -> Self {
+        let (tx, rx) = channel();
+        _ = EVENT_SENDER.set(tx);
+
+        Self {
+            apps: Default::default(),
+            windows: Default::default(),
+            hide_pt: Default::default(),
+            rx,
+        }
+    }
+
+    /// Get a copy of the sender required to inject events into the connection event stream
+    pub fn event_tx(&self) -> Sender<Event> {
+        EVENT_SENDER.get().unwrap().clone()
+    }
+
+    pub fn init_wm_and_run(
+        mut self,
+        config: Config<Self>,
+        key_bindings: KeyBindings<Self>,
+        mouse_bindings: MouseBindings<Self>,
+        init: impl FnOnce(&mut WindowManager<Self>) -> Result<()> + Send + 'static,
+    ) {
+        if !proc_is_ax_trusted() {
+            panic!("process is not trusted for the AX API");
+        }
+
+        set_ax_timeout();
+        self.set_hide_pt().unwrap();
+
+        let (_pool, app) = unsafe {
+            let pool = NSAutoreleasePool::new(nil);
+            let app = NSApp();
+            app.setActivationPolicy_(NSApplicationActivationPolicyRegular);
+
+            (pool, app)
+        };
+
+        spawn(move || {
+            let mut wm = WindowManager::new(config, key_bindings, mouse_bindings, self).unwrap();
+            init(&mut wm).unwrap();
+            wm.run().unwrap();
+        });
+
+        let global_observer = global_observer();
+        register_observers(global_observer);
+
+        unsafe {
+            let current_app = NSRunningApplication::currentApplication();
+            current_app.activateWithOptions_(
+                NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
+            );
+        }
+
+        unsafe { app.run() };
+    }
+
     fn update_known_apps_and_windows(&mut self) {
         let current_apps: HashMap<Pid, NSRunningApplication> = running_applications()
             .into_iter()
@@ -102,6 +164,21 @@ impl ConnState {
             .into_iter()
             .map(|win| (win.win_id, win))
             .collect();
+    }
+
+    fn set_hide_pt(&mut self) -> Result<()> {
+        let r_last_screen = self
+            .screen_details()?
+            .into_iter()
+            .last()
+            .ok_or(Error::NoScreens)?;
+
+        self.hide_pt = Point::new(
+            r_last_screen.x + r_last_screen.w as i32 - 1,
+            r_last_screen.y + r_last_screen.h as i32 - 1,
+        );
+
+        Ok(())
     }
 
     fn win_id_for_axwin(&self, axwin: &AXUIElement) -> Option<WinId> {
@@ -150,102 +227,9 @@ impl ConnState {
 
         res
     }
-}
 
-impl ConnEvent for Event {
-    fn requires_pointer_warp(&self) -> bool {
-        true
-    }
-}
-
-#[derive(Debug)]
-pub struct OsxConn {
-    conn_state: Mutex<ConnState>,
-    rx: Receiver<Event>,
-}
-
-impl OsxConn {
-    pub fn new() -> Self {
-        let (tx, rx) = channel();
-        _ = EVENT_SENDER.set(tx);
-
-        Self {
-            conn_state: Default::default(),
-            rx,
-        }
-    }
-
-    /// Get a copy of the sender required to inject events into the connection event stream
-    pub fn event_tx(&self) -> Sender<Event> {
-        EVENT_SENDER.get().unwrap().clone()
-    }
-
-    fn set_hide_pt(&mut self) -> Result<()> {
-        let r_last_screen = self
-            .screen_details()?
-            .into_iter()
-            .last()
-            .ok_or(Error::NoScreens)?;
-
-        let mut state = self.conn_state.lock().unwrap();
-        state.hide_pt = Point::new(
-            r_last_screen.x + r_last_screen.w as i32 - 1,
-            r_last_screen.y + r_last_screen.h as i32 - 1,
-        );
-
-        Ok(())
-    }
-
-    pub fn init_wm_and_run(
-        mut self,
-        config: Config<Self>,
-        key_bindings: KeyBindings<Self>,
-        mouse_bindings: MouseBindings<Self>,
-        init: impl FnOnce(&mut WindowManager<Self>) -> Result<()> + Send + 'static,
-    ) {
-        if !proc_is_ax_trusted() {
-            panic!("process is not trusted for the AX API");
-        }
-
-        set_ax_timeout();
-        self.set_hide_pt().unwrap();
-
-        let (_pool, app) = unsafe {
-            let pool = NSAutoreleasePool::new(nil);
-            let app = NSApp();
-            app.setActivationPolicy_(NSApplicationActivationPolicyRegular);
-
-            (pool, app)
-        };
-
-        spawn(move || {
-            let mut wm = WindowManager::new(config, key_bindings, mouse_bindings, self).unwrap();
-            init(&mut wm).unwrap();
-            wm.run().unwrap();
-        });
-
-        let global_observer = global_observer();
-        register_observers(global_observer);
-
-        unsafe {
-            let current_app = NSRunningApplication::currentApplication();
-            current_app.activateWithOptions_(
-                NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
-            );
-        }
-
-        unsafe { app.run() };
-    }
-
-    fn manage_new_windows(&self, state: &mut State<Self>) -> Result<()> {
-        let ids: Vec<_> = self
-            .conn_state
-            .lock()
-            .unwrap()
-            .windows
-            .values()
-            .map(|win| win.win_id)
-            .collect();
+    fn manage_new_windows(&mut self, state: &mut State<Self>) -> Result<()> {
+        let ids: Vec<_> = self.windows.values().map(|win| win.win_id).collect();
 
         for id in ids.iter() {
             if !state.client_set.contains(id) {
@@ -256,31 +240,26 @@ impl OsxConn {
         Ok(())
     }
 
-    fn focus_active_app_window(&self, pid: Pid, state: &mut State<Self>) -> Result<()> {
-        let mut conn_state = self.conn_state.lock().unwrap();
-        let axwin = match app!(conn_state, pid)?.focused_ax_window() {
+    fn focus_active_app_window(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
+        let axwin = match app!(self, pid)?.focused_ax_window() {
             Ok(axwin) => axwin,
             Err(_) => return Ok(()), // if we can't find the window then skip
         };
-        let maybe_id = conn_state.win_id_for_axwin(&axwin);
+        let maybe_id = self.win_id_for_axwin(&axwin);
         if state.client_set.current_client() == maybe_id.as_ref() {
             return Ok(()); // already focused
         }
-        drop(conn_state);
         if let Some(id) = maybe_id {
             self.manage_new_windows(state)?;
             self.modify_and_refresh(state, |cs| cs.focus_client(&id))?;
         }
 
-        std::thread::sleep(std::time::Duration::from_secs(1));
-
         Ok(())
     }
 
-    fn clear_terminated_app_state(&self, pid: Pid, state: &mut State<Self>) -> Result<()> {
-        let mut conn_state = self.conn_state.lock().unwrap();
-        conn_state.apps.remove(&pid);
-        let ids: Vec<_> = conn_state
+    fn clear_terminated_app_state(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
+        self.apps.remove(&pid);
+        let ids: Vec<_> = self
             .windows
             .values()
             .flat_map(|w| {
@@ -291,7 +270,7 @@ impl OsxConn {
                 }
             })
             .collect();
-        conn_state.windows.retain(|_, win| win.owner_pid != pid);
+        self.windows.retain(|_, win| win.owner_pid != pid);
 
         for id in ids.into_iter() {
             self.unmanage(id, state)?;
@@ -300,34 +279,57 @@ impl OsxConn {
         Ok(())
     }
 
-    fn handle_app_hidden(&self, _pid: Pid, _state: &mut State<Self>) -> Result<()> {
+    fn handle_new_window_for_pid(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
+        let old_ids: Vec<WinId> = self.windows.keys().map(|id| *id).collect();
+        self.update_known_apps_and_windows();
+        let new_windows: Vec<_> = self
+            .windows
+            .values()
+            .filter(|w| w.owner_pid == pid && !old_ids.contains(&w.win_id))
+            .map(|w| w.win_id)
+            .collect();
+
+        if new_windows.is_empty() {
+            warn!(%pid, "WindowCreated fired but no new windows for pid were found");
+            return Ok(());
+        }
+
+        debug!(?new_windows, "handling new window(s) for pid");
+        let focus = *new_windows.last().unwrap();
+        for id in new_windows.into_iter() {
+            self.manage(id, state)?;
+        }
+
+        self.modify_and_refresh(state, |cs| cs.focus_client(&focus))
+    }
+
+    fn handle_app_hidden(&mut self, _pid: Pid, _state: &mut State<Self>) -> Result<()> {
         Ok(())
     }
 
-    fn handle_app_unhidden(&self, _pid: Pid, _state: &mut State<Self>) -> Result<()> {
+    fn handle_app_unhidden(&mut self, _pid: Pid, _state: &mut State<Self>) -> Result<()> {
         Ok(())
     }
 
-    fn clear_closed_window_state(&self, id: WinId, state: &mut State<Self>) -> Result<()> {
-        let mut conn_state = self.conn_state.lock().unwrap();
-        conn_state.windows.remove(&id);
+    fn clear_closed_window_state(&mut self, id: WinId, state: &mut State<Self>) -> Result<()> {
+        self.windows.remove(&id);
         self.unmanage(id, state)
     }
 
-    fn handle_window_position(&self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
+    fn handle_window_position(&mut self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
         Ok(())
     }
 
-    fn handle_window_miniturized(&self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
+    fn handle_window_miniturized(&mut self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
         Ok(())
     }
 
-    fn handle_window_deminiturized(&self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
+    fn handle_window_deminiturized(&mut self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
         Ok(())
     }
 
     fn handle_keypress(
-        &self,
+        &mut self,
         key: KeyCode,
         bindings: &mut KeyBindings<Self>,
         state: &mut State<Self>,
@@ -347,16 +349,16 @@ impl OsxConn {
 impl Conn for OsxConn {
     type Event = Event;
 
-    fn root(&self) -> WinId {
+    fn root(&mut self) -> WinId {
         ROOT
     }
 
-    fn next_event(&self) -> Result<Self::Event> {
+    fn next_event(&mut self) -> Result<Self::Event> {
         self.rx.recv().map_err(|_| custom_error!("recv error"))
     }
 
     fn handle_event(
-        &self,
+        &mut self,
         evt: Event,
         key_bindings: &mut KeyBindings<Self>,
         _mouse_bindings: &mut MouseBindings<Self>,
@@ -368,12 +370,12 @@ impl Conn for OsxConn {
             AppActivated { pid } => self.focus_active_app_window(pid, state),
             AppLaunched { pid } => self.focus_active_app_window(pid, state),
             FocusedWindowChanged { pid } => self.focus_active_app_window(pid, state),
-            WindowCreated { pid } => self.focus_active_app_window(pid, state),
 
             AppHidden { pid } => self.handle_app_hidden(pid, state),
             AppTerminated { pid } => self.clear_terminated_app_state(pid, state),
             AppUnhidden { pid } => self.handle_app_unhidden(pid, state),
             UiElementDestroyed { id } => self.clear_closed_window_state(id, state),
+            WindowCreated { pid } => self.handle_new_window_for_pid(pid, state),
             WindowDeminiturized { id } => self.handle_window_deminiturized(id, state),
             WindowMiniturized { id } => self.handle_window_miniturized(id, state),
             WindowMoved { id } | WindowResized { id } => self.handle_window_position(id, state),
@@ -384,14 +386,14 @@ impl Conn for OsxConn {
         }
     }
 
-    fn flush(&self) {}
+    fn flush(&mut self) {}
 
-    fn grab(&self, _key_codes: &[KeyCode], _mouse_states: &[MouseState]) -> Result<()> {
+    fn grab(&mut self, _key_codes: &[KeyCode], _mouse_states: &[MouseState]) -> Result<()> {
         // TODO: actually grab keys and mouse states
         Ok(())
     }
 
-    fn screen_details(&self) -> Result<Vec<Rect>> {
+    fn screen_details(&mut self) -> Result<Vec<Rect>> {
         let mut displays: Vec<_> = CGDisplay::active_displays()
             .map_err(|e| custom_error!("error reading cg displays: {}", e))?
             .into_iter()
@@ -411,7 +413,7 @@ impl Conn for OsxConn {
         Ok(displays)
     }
 
-    fn cursor_position(&self) -> Result<Point> {
+    fn cursor_position(&mut self) -> Result<Point> {
         let source = CGEventSource::new(CGEventSourceStateID::CombinedSessionState)
             .map_err(|_| custom_error!("unable to get event source"))?;
         let p = CGEvent::new(source)
@@ -421,12 +423,11 @@ impl Conn for OsxConn {
         Ok(Point::new(p.x as i32, p.y as i32))
     }
 
-    fn warp_pointer(&self, id: WinId, x: i16, y: i16) -> Result<()> {
+    fn warp_pointer(&mut self, id: WinId, x: i16, y: i16) -> Result<()> {
         let p = if id == ROOT {
             CGPoint::new(x as f64, y as f64)
         } else {
-            let mut state = self.conn_state.lock().unwrap();
-            let r = state.win_prop(id, |win| win.bounds)?;
+            let r = self.win_prop(id, |win| win.bounds)?;
             CGPoint::new(r.x as f64 + x as f64, r.y as f64 + y as f64)
         };
 
@@ -434,16 +435,14 @@ impl Conn for OsxConn {
             .map_err(|e| custom_error!("unable to warp cursor: {}", e))
     }
 
-    fn existing_clients(&self) -> Result<Vec<WinId>> {
-        let mut state = self.conn_state.lock().unwrap();
-        state.update_known_apps_and_windows();
+    fn existing_clients(&mut self) -> Result<Vec<WinId>> {
+        self.update_known_apps_and_windows();
 
-        Ok(state.windows.keys().cloned().collect())
+        Ok(self.windows.keys().cloned().collect())
     }
 
-    fn position_client(&self, id: WinId, r: Rect) -> Result<()> {
-        let mut state = self.conn_state.lock().unwrap();
-        state.with_suppressed_animations(id, |win| {
+    fn position_client(&mut self, id: WinId, r: Rect) -> Result<()> {
+        self.with_suppressed_animations(id, |win| {
             win.set_pos(r.x as f64, r.y as f64)?;
             win.set_size(r.w as f64, r.h as f64)?;
             win.bounds = r;
@@ -451,14 +450,13 @@ impl Conn for OsxConn {
         })
     }
 
-    fn show_client(&self, _id: WinId) -> Result<()> {
+    fn show_client(&mut self, _id: WinId) -> Result<()> {
         Ok(())
     }
 
-    fn hide_client(&self, id: WinId) -> Result<()> {
-        let mut state = self.conn_state.lock().unwrap();
-        let p = state.hide_pt;
-        state.with_suppressed_animations(id, |win| {
+    fn hide_client(&mut self, id: WinId) -> Result<()> {
+        let p = self.hide_pt;
+        self.with_suppressed_animations(id, |win| {
             win.set_pos(p.x as f64, p.y as f64)?;
             win.bounds.x = p.x;
             win.bounds.y = p.y;
@@ -468,9 +466,8 @@ impl Conn for OsxConn {
 
     // alternate show/hide based on https://github.com/koekeishiya/yabai/blob/527b0aa7c259637138d3d7468b63e3a9eb742d30/src/window_manager.c#L2045
 
-    // fn show_client(&self, id: WinId) -> Result<()> {
-    //     let mut state = self.conn_state.lock().unwrap();
-    //     state.with_suppressed_animations(id, |win| {
+    // fn show_client(&mut self, id: WinId) -> Result<()> {
+    //     self.with_suppressed_animations(id, |win| {
     //         let is_minimised = win
     //             .axwin
     //             .attribute(&AXAttribute::minimized())
@@ -485,9 +482,8 @@ impl Conn for OsxConn {
     //     })
     // }
 
-    // fn hide_client(&self, id: WinId) -> Result<()> {
-    //     let mut state = self.conn_state.lock().unwrap();
-    //     state.with_suppressed_animations(id, |win| {
+    // fn hide_client(&mut self, id: WinId) -> Result<()> {
+    //     self.with_suppressed_animations(id, |win| {
     //         let is_minimised = win
     //             .axwin
     //             .attribute(&AXAttribute::minimized())
@@ -502,34 +498,32 @@ impl Conn for OsxConn {
     //     })
     // }
 
-    fn withdraw_client(&self, _id: WinId) -> Result<()> {
+    fn withdraw_client(&mut self, _id: WinId) -> Result<()> {
         Ok(()) // nothing to do
     }
 
     // based on https://github.com/koekeishiya/yabai/blob/527b0aa7c259637138d3d7468b63e3a9eb742d30/src/window_manager.c#L2066
-    fn kill_client(&self, id: WinId) -> Result<()> {
-        let mut state = self.conn_state.lock().unwrap();
-        let win = match state.windows.get(&id) {
+    fn kill_client(&mut self, id: WinId) -> Result<()> {
+        let win = match self.windows.get(&id) {
             Some(win) => win,
             None => {
-                state.update_known_apps_and_windows();
-                state.windows.get(&id).ok_or(Error::UnknownClient(id))?
+                self.update_known_apps_and_windows();
+                self.windows.get(&id).ok_or(Error::UnknownClient(id))?
             }
         };
 
         win.close()
     }
 
-    fn focus_client(&self, id: WinId) -> Result<()> {
-        let mut state = self.conn_state.lock().unwrap();
-        let win = match state.windows.get(&id) {
+    fn focus_client(&mut self, id: WinId) -> Result<()> {
+        let win = match self.windows.get(&id) {
             Some(win) => win,
             None => {
-                state.update_known_apps_and_windows();
-                state.windows.get(&id).ok_or(Error::UnknownClient(id))?
+                self.update_known_apps_and_windows();
+                self.windows.get(&id).ok_or(Error::UnknownClient(id))?
             }
         };
-        let app = state.apps.get(&win.owner_pid).unwrap();
+        let app = self.apps.get(&win.owner_pid).unwrap();
 
         win.raise()?;
         app.activate();
@@ -537,61 +531,50 @@ impl Conn for OsxConn {
         Ok(())
     }
 
-    fn client_geometry(&self, id: WinId) -> Result<Rect> {
-        let mut state = self.conn_state.lock().unwrap();
-        state.win_prop(id, |win| win.bounds)
+    fn client_geometry(&mut self, id: WinId) -> Result<Rect> {
+        self.win_prop(id, |win| win.bounds)
     }
 
-    fn client_title(&self, id: WinId) -> Result<String> {
-        let mut state = self.conn_state.lock().unwrap();
-        state.win_prop(id, |win| {
+    fn client_title(&mut self, id: WinId) -> Result<String> {
+        self.win_prop(id, |win| {
             win.window_name.clone().unwrap_or_else(|| win.owner.clone())
         })
     }
 
-    fn client_pid(&self, id: WinId) -> Option<u32> {
-        let mut state = self.conn_state.lock().unwrap();
-        state.win_prop(id, |win| win.owner_pid as u32).ok()
+    fn client_pid(&mut self, id: WinId) -> Option<u32> {
+        self.win_prop(id, |win| win.owner_pid as u32).ok()
     }
 
-    fn client_should_float(&self, id: WinId, floating_classes: &[String]) -> bool {
-        let mut state = self.conn_state.lock().unwrap();
-        state
-            .win_prop(id, |win| floating_classes.contains(&win.owner))
+    fn client_should_float(&mut self, id: WinId, floating_classes: &[String]) -> bool {
+        self.win_prop(id, |win| floating_classes.contains(&win.owner))
             .unwrap_or_default()
     }
 
-    fn client_should_be_managed(&self, id: WinId) -> bool {
-        // If we are able to pull in state for the window we should be managing it: the
-        // construction of OsxWindow errors for windows we don't want to manage
-        let mut state = self.conn_state.lock().unwrap();
-        state
-            .win_prop(id, |win| win.window_layer == 0)
+    fn client_should_be_managed(&mut self, id: WinId) -> bool {
+        self.win_prop(id, |win| win.window_layer == 0)
             .unwrap_or_default()
     }
 
-    fn client_is_fullscreen(&self, id: WinId) -> bool {
-        let mut state = self.conn_state.lock().unwrap();
-        state
-            .win_prop(id, |win| win.is_fullscreen())
+    fn client_is_fullscreen(&mut self, id: WinId) -> bool {
+        self.win_prop(id, |win| win.is_fullscreen())
             .unwrap_or_default()
     }
 
-    fn client_transient_parent(&self, _id: WinId) -> Option<WinId> {
+    fn client_transient_parent(&mut self, _id: WinId) -> Option<WinId> {
         None
     }
 
     // https://github.com/cmacrae/limelight/blob/master/src/main.c#L200
 
-    fn set_client_border_color(&self, _id: WinId, _color: impl Into<Color>) -> Result<()> {
+    fn set_client_border_color(&mut self, _id: WinId, _color: impl Into<Color>) -> Result<()> {
         Ok(()) // TODO: add support
     }
 
-    fn set_initial_properties(&self, _id: WinId, _config: &Config<Self>) -> Result<()> {
+    fn set_initial_properties(&mut self, _id: WinId, _config: &Config<Self>) -> Result<()> {
         Ok(()) // nothing to do
     }
 
-    fn restack<'a, I>(&self, _ids: I) -> Result<()>
+    fn restack<'a, I>(&mut self, _ids: I) -> Result<()>
     where
         WinId: 'a,
         I: Iterator<Item = &'a WinId>,
@@ -599,10 +582,9 @@ impl Conn for OsxConn {
         Ok(()) // TODO: add support
     }
 
-    fn manage_existing_clients(&self, state: &mut State<Self>) -> Result<()> {
-        let mut conn_state = self.conn_state.lock().unwrap();
-        conn_state.update_known_apps_and_windows();
-        let to_check: Vec<_> = conn_state
+    fn manage_existing_clients(&mut self, state: &mut State<Self>) -> Result<()> {
+        self.update_known_apps_and_windows();
+        let to_check: Vec<_> = self
             .windows
             .iter()
             .map(|(id, win)| (*id, win.bounds.midpoint()))
@@ -610,8 +592,6 @@ impl Conn for OsxConn {
 
         let screens = self.screen_details()?;
         info!(?to_check, ?screens, "windows to check");
-
-        drop(conn_state);
 
         for (id, p) in to_check.into_iter() {
             if !state.client_set.contains(&id) && self.client_should_be_managed(id) {
