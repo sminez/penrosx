@@ -26,7 +26,10 @@ use core_foundation_sys::{
     number::{CFNumberGetValue, CFNumberRef, kCFNumberSInt32Type},
     string::CFStringRef,
 };
-use core_graphics::display::{self, CGDisplay, CGPoint, CGRect, CGSize};
+use core_graphics::{
+    display::{CGDisplay, CGPoint, CGRect, CGSize},
+    window,
+};
 use penrose::{Result, WinId, custom_error, pure::geometry::Rect};
 use std::ffi::{CStr, c_void};
 use tracing::error;
@@ -100,7 +103,7 @@ unsafe impl Sync for OsxWindow {}
 impl OsxWindow {
     pub fn current_windows() -> Vec<Self> {
         let raw_infos = CGDisplay::window_list_info(
-            display::kCGWindowListExcludeDesktopElements | display::kCGWindowListOptionOnScreenOnly,
+            window::kCGWindowListExcludeDesktopElements | window::kCGWindowListOptionOnScreenOnly,
             None,
         );
         let mut infos = Vec::new();

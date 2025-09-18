@@ -11,14 +11,14 @@ codegen-units = 1
 [dependencies]
 accessibility = "0.2.0"
 accessibility-sys = "0.2.0"
-anyhow = "1.0.97"
-cocoa = "0.26.0"
-core-foundation = "0.10.0"
+anyhow = "1.0.99"
+cocoa = "=0.26.0" # 0.26.1 marks the crate as depricated
+core-foundation = "0.10.1"
 core-foundation-sys = "0.8.7"
-core-graphics = "0.24.0"
-global-hotkey = "0.6.4" # pulls in WAY more than we want but lets us test things out for now
+core-graphics = "0.25.0"
+global-hotkey = "0.7.0" # pulls in WAY more than we want but lets us test things out for now
 objc = "0.2"
 # penrose = { git = "https://github.com/sminez/penrose.git", branch = "wip/generic-conn", default-features = false }
 penrose = { path = "../penrose", default-features = false }
 tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "json"] }

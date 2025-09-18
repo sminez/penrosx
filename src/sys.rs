@@ -28,7 +28,7 @@ use core_foundation_sys::{
     },
     number::kCFBooleanTrue,
 };
-use core_graphics::display::{CGRect, CGWindowID};
+use core_graphics::{display::CGRect, window::CGWindowID};
 use objc::{
     class,
     declare::ClassDecl,
@@ -161,6 +161,7 @@ unsafe extern "C" fn ax_observer_callback(
 ) {
     let notif = unsafe { CFString::wrap_under_get_rule(notification) }.to_string();
 
+    #[allow(non_upper_case_globals, reason = "accessibility_sys crate")]
     let evt = match notif.as_str() {
         kAXWindowCreatedNotification => Event::WindowCreated { pid: p.addr() as _ },
         kAXFocusedWindowChangedNotification => Event::FocusedWindowChanged { pid: p.addr() as _ },
