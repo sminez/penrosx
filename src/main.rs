@@ -115,10 +115,10 @@ fn register_global_hotkeys(
     }
 
     GlobalHotKeyEvent::set_event_handler(Some(move |event: GlobalHotKeyEvent| {
-        if event.state == HotKeyState::Pressed {
-            if let Some(k) = rev_map.get(&event.id) {
-                let _ = tx.send(Event::KeyPress { k: *k });
-            }
+        if event.state == HotKeyState::Pressed
+            && let Some(k) = rev_map.get(&event.id)
+        {
+            let _ = tx.send(Event::KeyPress { k: *k });
         }
     }));
 

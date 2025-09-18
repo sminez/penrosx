@@ -432,7 +432,13 @@ impl Conn for OsxConn {
         };
 
         CGDisplay::warp_mouse_cursor_position(p)
-            .map_err(|e| custom_error!("unable to warp cursor: {}", e))
+            .map_err(|e| custom_error!("unable to warp cursor: {}", e))?;
+
+        if id != ROOT {
+            self.focus_client(id)?;
+        }
+
+        Ok(())
     }
 
     fn existing_clients(&mut self) -> Result<Vec<WinId>> {
@@ -450,11 +456,11 @@ impl Conn for OsxConn {
         })
     }
 
-    fn show_client(&mut self, _id: WinId) -> Result<()> {
+    fn show_client(&mut self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
         Ok(())
     }
 
-    fn hide_client(&mut self, id: WinId) -> Result<()> {
+    fn hide_client(&mut self, id: WinId, _state: &mut State<Self>) -> Result<()> {
         let p = self.hide_pt;
         self.with_suppressed_animations(id, |win| {
             win.set_pos(p.x as f64, p.y as f64)?;
@@ -463,40 +469,6 @@ impl Conn for OsxConn {
             Ok(())
         })
     }
-
-    // alternate show/hide based on https://github.com/koekeishiya/yabai/blob/527b0aa7c259637138d3d7468b63e3a9eb742d30/src/window_manager.c#L2045
-
-    // fn show_client(&mut self, id: WinId) -> Result<()> {
-    //     self.with_suppressed_animations(id, |win| {
-    //         let is_minimised = win
-    //             .axwin
-    //             .attribute(&AXAttribute::minimized())
-    //             .map_err(|e| custom_error!("unable to read minimised attr: {}", e))?;
-    //         if is_minimised == CFBoolean::false_value() {
-    //             return Ok(());
-    //         }
-
-    //         win.axwin
-    //             .set_attribute(&AXAttribute::minimized(), false)
-    //             .map_err(|e| custom_error!("error un-minimizing window: {}", e))
-    //     })
-    // }
-
-    // fn hide_client(&mut self, id: WinId) -> Result<()> {
-    //     self.with_suppressed_animations(id, |win| {
-    //         let is_minimised = win
-    //             .axwin
-    //             .attribute(&AXAttribute::minimized())
-    //             .map_err(|e| custom_error!("unable to read minimised attr: {}", e))?;
-    //         if is_minimised == CFBoolean::true_value() {
-    //             return Ok(());
-    //         }
-
-    //         win.axwin
-    //             .set_attribute(&AXAttribute::minimized(), true)
-    //             .map_err(|e| custom_error!("error minimizing window: {}", e))
-    //     })
-    // }
 
     fn withdraw_client(&mut self, _id: WinId) -> Result<()> {
         Ok(()) // nothing to do

@@ -140,14 +140,24 @@ where
 use objc::{self, class, msg_send, sel, sel_impl};
 #[allow(non_camel_case_types)]
 pub type id = *mut objc::runtime::Object;
+#[derive(PartialEq, Copy, Clone, Hash, Debug, Default)]
+#[repr(transparent)]
+pub struct __BindgenFloat16(pub u16);
 pub const __API_TO_BE_DEPRECATED: u32 = 100000;
 pub const __API_TO_BE_DEPRECATED_MACOS: u32 = 100000;
+pub const __API_TO_BE_DEPRECATED_MACOSAPPLICATIONEXTENSION: u32 = 100000;
 pub const __API_TO_BE_DEPRECATED_IOS: u32 = 100000;
+pub const __API_TO_BE_DEPRECATED_IOSAPPLICATIONEXTENSION: u32 = 100000;
 pub const __API_TO_BE_DEPRECATED_MACCATALYST: u32 = 100000;
+pub const __API_TO_BE_DEPRECATED_MACCATALYSTAPPLICATIONEXTENSION: u32 = 100000;
 pub const __API_TO_BE_DEPRECATED_WATCHOS: u32 = 100000;
+pub const __API_TO_BE_DEPRECATED_WATCHOSAPPLICATIONEXTENSION: u32 = 100000;
 pub const __API_TO_BE_DEPRECATED_TVOS: u32 = 100000;
+pub const __API_TO_BE_DEPRECATED_TVOSAPPLICATIONEXTENSION: u32 = 100000;
 pub const __API_TO_BE_DEPRECATED_DRIVERKIT: u32 = 100000;
 pub const __API_TO_BE_DEPRECATED_VISIONOS: u32 = 100000;
+pub const __API_TO_BE_DEPRECATED_VISIONOSAPPLICATIONEXTENSION: u32 = 100000;
+pub const __API_TO_BE_DEPRECATED_KERNELKIT: u32 = 100000;
 pub const __MAC_10_0: u32 = 1000;
 pub const __MAC_10_1: u32 = 1010;
 pub const __MAC_10_2: u32 = 1020;
@@ -203,11 +213,21 @@ pub const __MAC_13_3: u32 = 130300;
 pub const __MAC_13_4: u32 = 130400;
 pub const __MAC_13_5: u32 = 130500;
 pub const __MAC_13_6: u32 = 130600;
+pub const __MAC_13_7: u32 = 130700;
 pub const __MAC_14_0: u32 = 140000;
 pub const __MAC_14_1: u32 = 140100;
 pub const __MAC_14_2: u32 = 140200;
 pub const __MAC_14_3: u32 = 140300;
 pub const __MAC_14_4: u32 = 140400;
+pub const __MAC_14_5: u32 = 140500;
+pub const __MAC_14_6: u32 = 140600;
+pub const __MAC_14_7: u32 = 140700;
+pub const __MAC_15_0: u32 = 150000;
+pub const __MAC_15_1: u32 = 150100;
+pub const __MAC_15_2: u32 = 150200;
+pub const __MAC_15_3: u32 = 150300;
+pub const __MAC_15_4: u32 = 150400;
+pub const __MAC_15_5: u32 = 150500;
 pub const __IPHONE_2_0: u32 = 20000;
 pub const __IPHONE_2_1: u32 = 20100;
 pub const __IPHONE_2_2: u32 = 20200;
@@ -286,6 +306,15 @@ pub const __IPHONE_17_1: u32 = 170100;
 pub const __IPHONE_17_2: u32 = 170200;
 pub const __IPHONE_17_3: u32 = 170300;
 pub const __IPHONE_17_4: u32 = 170400;
+pub const __IPHONE_17_5: u32 = 170500;
+pub const __IPHONE_17_6: u32 = 170600;
+pub const __IPHONE_17_7: u32 = 170700;
+pub const __IPHONE_18_0: u32 = 180000;
+pub const __IPHONE_18_1: u32 = 180100;
+pub const __IPHONE_18_2: u32 = 180200;
+pub const __IPHONE_18_3: u32 = 180300;
+pub const __IPHONE_18_4: u32 = 180400;
+pub const __IPHONE_18_5: u32 = 180500;
 pub const __WATCHOS_1_0: u32 = 10000;
 pub const __WATCHOS_2_0: u32 = 20000;
 pub const __WATCHOS_2_1: u32 = 20100;
@@ -332,6 +361,15 @@ pub const __WATCHOS_10_1: u32 = 100100;
 pub const __WATCHOS_10_2: u32 = 100200;
 pub const __WATCHOS_10_3: u32 = 100300;
 pub const __WATCHOS_10_4: u32 = 100400;
+pub const __WATCHOS_10_5: u32 = 100500;
+pub const __WATCHOS_10_6: u32 = 100600;
+pub const __WATCHOS_10_7: u32 = 100700;
+pub const __WATCHOS_11_0: u32 = 110000;
+pub const __WATCHOS_11_1: u32 = 110100;
+pub const __WATCHOS_11_2: u32 = 110200;
+pub const __WATCHOS_11_3: u32 = 110300;
+pub const __WATCHOS_11_4: u32 = 110400;
+pub const __WATCHOS_11_5: u32 = 110500;
 pub const __TVOS_9_0: u32 = 90000;
 pub const __TVOS_9_1: u32 = 90100;
 pub const __TVOS_9_2: u32 = 90200;
@@ -379,6 +417,14 @@ pub const __TVOS_17_1: u32 = 170100;
 pub const __TVOS_17_2: u32 = 170200;
 pub const __TVOS_17_3: u32 = 170300;
 pub const __TVOS_17_4: u32 = 170400;
+pub const __TVOS_17_5: u32 = 170500;
+pub const __TVOS_17_6: u32 = 170600;
+pub const __TVOS_18_0: u32 = 180000;
+pub const __TVOS_18_1: u32 = 180100;
+pub const __TVOS_18_2: u32 = 180200;
+pub const __TVOS_18_3: u32 = 180300;
+pub const __TVOS_18_4: u32 = 180400;
+pub const __TVOS_18_5: u32 = 180500;
 pub const __BRIDGEOS_2_0: u32 = 20000;
 pub const __BRIDGEOS_3_0: u32 = 30000;
 pub const __BRIDGEOS_3_1: u32 = 30100;
@@ -404,6 +450,14 @@ pub const __BRIDGEOS_8_1: u32 = 80100;
 pub const __BRIDGEOS_8_2: u32 = 80200;
 pub const __BRIDGEOS_8_3: u32 = 80300;
 pub const __BRIDGEOS_8_4: u32 = 80400;
+pub const __BRIDGEOS_8_5: u32 = 80500;
+pub const __BRIDGEOS_8_6: u32 = 80600;
+pub const __BRIDGEOS_9_0: u32 = 90000;
+pub const __BRIDGEOS_9_1: u32 = 90100;
+pub const __BRIDGEOS_9_2: u32 = 90200;
+pub const __BRIDGEOS_9_3: u32 = 90300;
+pub const __BRIDGEOS_9_4: u32 = 90400;
+pub const __BRIDGEOS_9_5: u32 = 90500;
 pub const __DRIVERKIT_19_0: u32 = 190000;
 pub const __DRIVERKIT_20_0: u32 = 200000;
 pub const __DRIVERKIT_21_0: u32 = 210000;
@@ -416,8 +470,24 @@ pub const __DRIVERKIT_23_1: u32 = 230100;
 pub const __DRIVERKIT_23_2: u32 = 230200;
 pub const __DRIVERKIT_23_3: u32 = 230300;
 pub const __DRIVERKIT_23_4: u32 = 230400;
+pub const __DRIVERKIT_23_5: u32 = 230500;
+pub const __DRIVERKIT_23_6: u32 = 230600;
+pub const __DRIVERKIT_24_0: u32 = 240000;
+pub const __DRIVERKIT_24_1: u32 = 240100;
+pub const __DRIVERKIT_24_2: u32 = 240200;
+pub const __DRIVERKIT_24_3: u32 = 240300;
+pub const __DRIVERKIT_24_4: u32 = 240400;
+pub const __DRIVERKIT_24_5: u32 = 240500;
 pub const __VISIONOS_1_0: u32 = 10000;
 pub const __VISIONOS_1_1: u32 = 10100;
+pub const __VISIONOS_1_2: u32 = 10200;
+pub const __VISIONOS_1_3: u32 = 10300;
+pub const __VISIONOS_2_0: u32 = 20000;
+pub const __VISIONOS_2_1: u32 = 20100;
+pub const __VISIONOS_2_2: u32 = 20200;
+pub const __VISIONOS_2_3: u32 = 20300;
+pub const __VISIONOS_2_4: u32 = 20400;
+pub const __VISIONOS_2_5: u32 = 20500;
 pub const MAC_OS_X_VERSION_10_0: u32 = 1000;
 pub const MAC_OS_X_VERSION_10_1: u32 = 1010;
 pub const MAC_OS_X_VERSION_10_2: u32 = 1020;
@@ -473,12 +543,25 @@ pub const MAC_OS_VERSION_13_3: u32 = 130300;
 pub const MAC_OS_VERSION_13_4: u32 = 130400;
 pub const MAC_OS_VERSION_13_5: u32 = 130500;
 pub const MAC_OS_VERSION_13_6: u32 = 130600;
+pub const MAC_OS_VERSION_13_7: u32 = 130700;
 pub const MAC_OS_VERSION_14_0: u32 = 140000;
 pub const MAC_OS_VERSION_14_1: u32 = 140100;
 pub const MAC_OS_VERSION_14_2: u32 = 140200;
 pub const MAC_OS_VERSION_14_3: u32 = 140300;
 pub const MAC_OS_VERSION_14_4: u32 = 140400;
-pub const __MAC_OS_X_VERSION_MAX_ALLOWED: u32 = 140400;
+pub const MAC_OS_VERSION_14_5: u32 = 140500;
+pub const MAC_OS_VERSION_14_6: u32 = 140600;
+pub const MAC_OS_VERSION_14_7: u32 = 140700;
+pub const MAC_OS_VERSION_15_0: u32 = 150000;
+pub const MAC_OS_VERSION_15_1: u32 = 150100;
+pub const MAC_OS_VERSION_15_2: u32 = 150200;
+pub const MAC_OS_VERSION_15_3: u32 = 150300;
+pub const MAC_OS_VERSION_15_4: u32 = 150400;
+pub const MAC_OS_VERSION_15_5: u32 = 150500;
+pub const __AVAILABILITY_VERSIONS_VERSION_HASH: u32 = 93585900;
+pub const __AVAILABILITY_VERSIONS_VERSION_STRING: &[u8; 6] = b"Local\0";
+pub const __AVAILABILITY_FILE: &[u8; 23] = b"AvailabilityVersions.h\0";
+pub const __MAC_OS_X_VERSION_MAX_ALLOWED: u32 = 150500;
 pub const __ENABLE_LEGACY_MAC_AVAILABILITY: u32 = 1;
 pub const __has_safe_buffers: u32 = 1;
 pub const __DARWIN_ONLY_64_BIT_INO_T: u32 = 1;
@@ -500,6 +583,8 @@ pub const _DARWIN_FEATURE_ONLY_VERS_1050: u32 = 1;
 pub const _DARWIN_FEATURE_ONLY_UNIX_CONFORMANCE: u32 = 1;
 pub const _DARWIN_FEATURE_UNIX_CONFORMANCE: u32 = 3;
 pub const __has_ptrcheck: u32 = 0;
+pub const __has_bounds_safety_attributes: u32 = 0;
+pub const USE_CLANG_TYPES: u32 = 0;
 pub const __PTHREAD_SIZE__: u32 = 8176;
 pub const __PTHREAD_ATTR_SIZE__: u32 = 56;
 pub const __PTHREAD_MUTEXATTR_SIZE__: u32 = 8;
@@ -547,6 +632,7 @@ pub const SIGINFO: u32 = 29;
 pub const SIGUSR1: u32 = 30;
 pub const SIGUSR2: u32 = 31;
 pub const __DARWIN_OPAQUE_ARM_THREAD_STATE64: u32 = 0;
+pub const USE_CLANG_STDDEF: u32 = 0;
 pub const SIGEV_NONE: u32 = 0;
 pub const SIGEV_SIGNAL: u32 = 1;
 pub const SIGEV_THREAD: u32 = 3;
@@ -743,6 +829,7 @@ pub const IOPOL_VFS_IGNORE_PERMISSIONS_OFF: u32 = 0;
 pub const IOPOL_VFS_IGNORE_PERMISSIONS_ON: u32 = 1;
 pub const IOPOL_VFS_SKIP_MTIME_UPDATE_OFF: u32 = 0;
 pub const IOPOL_VFS_SKIP_MTIME_UPDATE_ON: u32 = 1;
+pub const IOPOL_VFS_SKIP_MTIME_UPDATE_IGNORE: u32 = 2;
 pub const IOPOL_VFS_ALLOW_LOW_SPACE_WRITES_OFF: u32 = 0;
 pub const IOPOL_VFS_ALLOW_LOW_SPACE_WRITES_ON: u32 = 1;
 pub const IOPOL_VFS_DISALLOW_RW_FOR_O_EVTONLY_DEFAULT: u32 = 0;
@@ -764,29 +851,14 @@ pub const _QUAD_LOWWORD: u32 = 0;
 pub const __DARWIN_LITTLE_ENDIAN: u32 = 1234;
 pub const __DARWIN_BIG_ENDIAN: u32 = 4321;
 pub const __DARWIN_PDP_ENDIAN: u32 = 3412;
-pub const __DARWIN_BYTE_ORDER: u32 = 1234;
 pub const LITTLE_ENDIAN: u32 = 1234;
 pub const BIG_ENDIAN: u32 = 4321;
 pub const PDP_ENDIAN: u32 = 3412;
+pub const __DARWIN_BYTE_ORDER: u32 = 1234;
 pub const BYTE_ORDER: u32 = 1234;
 pub const EXIT_FAILURE: u32 = 1;
 pub const EXIT_SUCCESS: u32 = 0;
 pub const RAND_MAX: u32 = 2147483647;
-pub const MAC_OS_X_VERSION_MAX_ALLOWED: u32 = 140000;
-pub const __AVAILABILITY_MACROS_USES_AVAILABILITY: u32 = 1;
-pub const __IPHONE_COMPAT_VERSION: u32 = 40000;
-pub const DYNAMIC_TARGETS_ENABLED: u32 = 0;
-pub const TARGET_OS_MAC: u32 = 1;
-pub const TARGET_OS_OSX: u32 = 1;
-pub const TARGET_OS_IPHONE: u32 = 0;
-pub const TARGET_OS_IOS: u32 = 0;
-pub const TARGET_OS_WATCH: u32 = 0;
-pub const TARGET_OS_TV: u32 = 0;
-pub const TARGET_OS_MACCATALYST: u32 = 0;
-pub const TARGET_OS_UIKITFORMAC: u32 = 0;
-pub const TARGET_OS_SIMULATOR: u32 = 0;
-pub const TARGET_OS_EMBEDDED: u32 = 0;
-pub const TARGET_OS_UNIX: u32 = 0;
 pub const TARGET_OS_RTKIT: u32 = 0;
 pub const TARGET_RT_LITTLE_ENDIAN: u32 = 1;
 pub const TARGET_RT_BIG_ENDIAN: u32 = 0;
@@ -794,11 +866,6 @@ pub const TARGET_RT_64_BIT: u32 = 1;
 pub const TARGET_RT_MAC_CFM: u32 = 0;
 pub const TARGET_RT_MAC_MACHO: u32 = 1;
 pub const TARGET_CPU_ARM64: u32 = 1;
-pub const TARGET_OS_VISION: u32 = 0;
-pub const TARGET_OS_DRIVERKIT: u32 = 0;
-pub const TARGET_OS_WIN32: u32 = 0;
-pub const TARGET_OS_WINDOWS: u32 = 0;
-pub const TARGET_OS_LINUX: u32 = 0;
 pub const TARGET_CPU_PPC: u32 = 0;
 pub const TARGET_CPU_PPC64: u32 = 0;
 pub const TARGET_CPU_68K: u32 = 0;
@@ -808,8 +875,7 @@ pub const TARGET_CPU_ARM: u32 = 0;
 pub const TARGET_CPU_MIPS: u32 = 0;
 pub const TARGET_CPU_SPARC: u32 = 0;
 pub const TARGET_CPU_ALPHA: u32 = 0;
-pub const TARGET_IPHONE_SIMULATOR: u32 = 0;
-pub const TARGET_OS_NANO: u32 = 0;
+pub const __AVAILABILITY_MACROS_USES_AVAILABILITY: u32 = 1;
 pub const __DARWIN_FD_SETSIZE: u32 = 1024;
 pub const __DARWIN_NBBY: u32 = 8;
 pub const NBBY: u32 = 8;
@@ -822,9 +888,8 @@ pub const __bool_true_false_are_defined: u32 = 1;
 pub const true_: u32 = 1;
 pub const false_: u32 = 0;
 pub const OBJC_BOOL_IS_BOOL: u32 = 1;
-pub const NSINTEGER_DEFINED: u32 = 1;
-pub const __GNUC_VA_LIST: u32 = 1;
 pub const __DARWIN_CLK_TCK: u32 = 100;
+pub const USE_CLANG_LIMITS: u32 = 0;
 pub const MB_LEN_MAX: u32 = 6;
 pub const CLK_TCK: u32 = 100;
 pub const CHAR_BIT: u32 = 8;
@@ -939,6 +1004,10 @@ pub const _XOPEN_IOV_MAX: u32 = 16;
 pub const IOV_MAX: u32 = 1024;
 pub const _XOPEN_NAME_MAX: u32 = 255;
 pub const _XOPEN_PATH_MAX: u32 = 1024;
+pub const NSIntegerMax: u64 = 9223372036854775807;
+pub const NSIntegerMin: i64 = -9223372036854775808;
+pub const NSUIntegerMax: i32 = -1;
+pub const NSINTEGER_DEFINED: u32 = 1;
 pub const NS_BLOCKS_AVAILABLE: u32 = 1;
 pub const __COREFOUNDATION_CFAVAILABILITY__: u32 = 1;
 pub const API_TO_BE_DEPRECATED: u32 = 100000;
@@ -1059,6 +1128,7 @@ pub const MIXEDMODE_CALLS_ARE_FUNCTIONS: u32 = 1;
 pub const ALLOW_OBSOLETE_CARBON_MACMEMORY: u32 = 0;
 pub const ALLOW_OBSOLETE_CARBON_OSUTILS: u32 = 0;
 pub const kInvalidID: u32 = 0;
+pub const CF_HAS_TYPED_ALLOCATOR: u32 = 0;
 pub const TRUE: u32 = 1;
 pub const FALSE: u32 = 0;
 pub const kCFCoreFoundationVersionNumber10_0: f64 = 196.4;
@@ -1284,6 +1354,14 @@ pub const ELAST: u32 = 106;
 pub const FLT_HAS_SUBNORM: u32 = 1;
 pub const DBL_HAS_SUBNORM: u32 = 1;
 pub const LDBL_HAS_SUBNORM: u32 = 1;
+pub const LC_COLLATE_MASK: u32 = 1;
+pub const LC_CTYPE_MASK: u32 = 2;
+pub const LC_MESSAGES_MASK: u32 = 4;
+pub const LC_MONETARY_MASK: u32 = 8;
+pub const LC_NUMERIC_MASK: u32 = 16;
+pub const LC_TIME_MASK: u32 = 32;
+pub const _LC_NUM_MASK: u32 = 6;
+pub const _LC_LAST_MASK: u32 = 32;
 pub const LC_ALL: u32 = 0;
 pub const LC_COLLATE: u32 = 1;
 pub const LC_CTYPE: u32 = 2;
@@ -1327,6 +1405,7 @@ pub const UNDERFLOW: u32 = 4;
 pub const TLOSS: u32 = 5;
 pub const PLOSS: u32 = 6;
 pub const _JBLEN: u32 = 48;
+pub const USE_CLANG_STDARG: u32 = 0;
 pub const RENAME_SECLUDE: u32 = 1;
 pub const RENAME_SWAP: u32 = 2;
 pub const RENAME_EXCL: u32 = 4;
@@ -1605,11 +1684,9 @@ pub const MPO_CONNECTION_PORT: u32 = 2048;
 pub const MPO_REPLY_PORT: u32 = 4096;
 pub const MPO_ENFORCE_REPLY_PORT_SEMANTICS: u32 = 8192;
 pub const MPO_PROVISIONAL_REPLY_PORT: u32 = 16384;
-pub const MPO_PROVISIONAL_ID_PROT_OPTOUT: u32 = 32768;
+pub const MPO_EXCEPTION_PORT: u32 = 32768;
 pub const GUARD_TYPE_MACH_PORT: u32 = 1;
-pub const MAX_FATAL_kGUARD_EXC_CODE: u32 = 128;
 pub const MPG_FLAGS_NONE: u32 = 0;
-pub const MAX_OPTIONAL_kGUARD_EXC_CODE: u32 = 524288;
 pub const MPG_FLAGS_STRICT_REPLY_INVALID_REPLY_DISP: u64 = 72057594037927936;
 pub const MPG_FLAGS_STRICT_REPLY_INVALID_REPLY_PORT: u64 = 144115188075855872;
 pub const MPG_FLAGS_STRICT_REPLY_INVALID_VOUCHER: u64 = 288230376151711744;
@@ -1954,6 +2031,7 @@ pub const O_NOFOLLOW: u32 = 256;
 pub const O_CREAT: u32 = 512;
 pub const O_TRUNC: u32 = 1024;
 pub const O_EXCL: u32 = 2048;
+pub const O_RESOLVE_BENEATH: u32 = 4096;
 pub const O_EVTONLY: u32 = 32768;
 pub const O_NOCTTY: u32 = 131072;
 pub const O_DIRECTORY: u32 = 1048576;
@@ -2045,6 +2123,7 @@ pub const F_SETLEASE: u32 = 106;
 pub const F_GETLEASE: u32 = 107;
 pub const F_TRANSFEREXTENTS: u32 = 110;
 pub const F_ATTRIBUTION_TAG: u32 = 111;
+pub const F_ADDSIGS_MAIN_BINARY: u32 = 113;
 pub const FCNTL_FS_SPECIFIC_BASE: u32 = 65536;
 pub const F_DUPFD_CLOEXEC: u32 = 67;
 pub const FD_CLOEXEC: u32 = 1;
@@ -2401,6 +2480,10 @@ pub const CPUFAMILY_ARM_IBIZA: u32 = 4197663070;
 pub const CPUFAMILY_ARM_PALMA: u32 = 1912690738;
 pub const CPUFAMILY_ARM_COLL: u32 = 678884789;
 pub const CPUFAMILY_ARM_LOBOS: u32 = 1598941843;
+pub const CPUFAMILY_ARM_DONAN: u32 = 1867590060;
+pub const CPUFAMILY_ARM_BRAVA: u32 = 399882554;
+pub const CPUFAMILY_ARM_TAHITI: u32 = 1976872121;
+pub const CPUFAMILY_ARM_TUPAI: u32 = 541402832;
 pub const CPUSUBFAMILY_UNKNOWN: u32 = 0;
 pub const CPUSUBFAMILY_ARM_HP: u32 = 1;
 pub const CPUSUBFAMILY_ARM_HG: u32 = 2;
@@ -2854,6 +2937,23 @@ const _: () = {
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
+pub struct __darwin_arm_exception_state64_v2 {
+    pub __far: __uint64_t,
+    pub __esr: __uint64_t,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of __darwin_arm_exception_state64_v2"]
+        [::std::mem::size_of::<__darwin_arm_exception_state64_v2>() - 16usize];
+    ["Alignment of __darwin_arm_exception_state64_v2"]
+        [::std::mem::align_of::<__darwin_arm_exception_state64_v2>() - 8usize];
+    ["Offset of field: __darwin_arm_exception_state64_v2::__far"]
+        [::std::mem::offset_of!(__darwin_arm_exception_state64_v2, __far) - 0usize];
+    ["Offset of field: __darwin_arm_exception_state64_v2::__esr"]
+        [::std::mem::offset_of!(__darwin_arm_exception_state64_v2, __esr) - 8usize];
+};
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
 pub struct __darwin_arm_thread_state {
     pub __r: [__uint32_t; 13usize],
     pub __sp: __uint32_t,
@@ -2979,6 +3079,84 @@ const _: () = {
     ["Alignment of __arm_pagein_state"][::std::mem::align_of::<__arm_pagein_state>() - 4usize];
     ["Offset of field: __arm_pagein_state::__pagein_error"]
         [::std::mem::offset_of!(__arm_pagein_state, __pagein_error) - 0usize];
+};
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __darwin_arm_sme_state {
+    pub __svcr: __uint64_t,
+    pub __tpidr2_el0: __uint64_t,
+    pub __svl_b: __uint16_t,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of __darwin_arm_sme_state"][::std::mem::size_of::<__darwin_arm_sme_state>() - 24usize];
+    ["Alignment of __darwin_arm_sme_state"]
+        [::std::mem::align_of::<__darwin_arm_sme_state>() - 8usize];
+    ["Offset of field: __darwin_arm_sme_state::__svcr"]
+        [::std::mem::offset_of!(__darwin_arm_sme_state, __svcr) - 0usize];
+    ["Offset of field: __darwin_arm_sme_state::__tpidr2_el0"]
+        [::std::mem::offset_of!(__darwin_arm_sme_state, __tpidr2_el0) - 8usize];
+    ["Offset of field: __darwin_arm_sme_state::__svl_b"]
+        [::std::mem::offset_of!(__darwin_arm_sme_state, __svl_b) - 16usize];
+};
+#[repr(C)]
+#[repr(align(4))]
+#[derive(Debug, Copy, Clone)]
+pub struct __darwin_arm_sve_z_state {
+    pub __z: [[::std::os::raw::c_char; 256usize]; 16usize],
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of __darwin_arm_sve_z_state"]
+        [::std::mem::size_of::<__darwin_arm_sve_z_state>() - 4096usize];
+    ["Alignment of __darwin_arm_sve_z_state"]
+        [::std::mem::align_of::<__darwin_arm_sve_z_state>() - 4usize];
+    ["Offset of field: __darwin_arm_sve_z_state::__z"]
+        [::std::mem::offset_of!(__darwin_arm_sve_z_state, __z) - 0usize];
+};
+#[repr(C)]
+#[repr(align(4))]
+#[derive(Debug, Copy, Clone)]
+pub struct __darwin_arm_sve_p_state {
+    pub __p: [[::std::os::raw::c_char; 32usize]; 16usize],
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of __darwin_arm_sve_p_state"]
+        [::std::mem::size_of::<__darwin_arm_sve_p_state>() - 512usize];
+    ["Alignment of __darwin_arm_sve_p_state"]
+        [::std::mem::align_of::<__darwin_arm_sve_p_state>() - 4usize];
+    ["Offset of field: __darwin_arm_sve_p_state::__p"]
+        [::std::mem::offset_of!(__darwin_arm_sve_p_state, __p) - 0usize];
+};
+#[repr(C)]
+#[repr(align(4))]
+#[derive(Debug, Copy, Clone)]
+pub struct __darwin_arm_sme_za_state {
+    pub __za: [::std::os::raw::c_char; 4096usize],
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of __darwin_arm_sme_za_state"]
+        [::std::mem::size_of::<__darwin_arm_sme_za_state>() - 4096usize];
+    ["Alignment of __darwin_arm_sme_za_state"]
+        [::std::mem::align_of::<__darwin_arm_sme_za_state>() - 4usize];
+    ["Offset of field: __darwin_arm_sme_za_state::__za"]
+        [::std::mem::offset_of!(__darwin_arm_sme_za_state, __za) - 0usize];
+};
+#[repr(C)]
+#[repr(align(4))]
+#[derive(Debug, Copy, Clone)]
+pub struct __darwin_arm_sme2_state {
+    pub __zt0: [::std::os::raw::c_char; 64usize],
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of __darwin_arm_sme2_state"][::std::mem::size_of::<__darwin_arm_sme2_state>() - 64usize];
+    ["Alignment of __darwin_arm_sme2_state"]
+        [::std::mem::align_of::<__darwin_arm_sme2_state>() - 4usize];
+    ["Offset of field: __darwin_arm_sme2_state::__zt0"]
+        [::std::mem::offset_of!(__darwin_arm_sme2_state, __zt0) - 0usize];
 };
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -3953,7 +4131,10 @@ pub struct rusage_info_v6 {
     pub ri_penergy_nj: u64,
     pub ri_secure_time_in_system: u64,
     pub ri_secure_ptime_in_system: u64,
-    pub ri_reserved: [u64; 12usize],
+    pub ri_neural_footprint: u64,
+    pub ri_lifetime_max_neural_footprint: u64,
+    pub ri_interval_max_neural_footprint: u64,
+    pub ri_reserved: [u64; 9usize],
 }
 #[allow(clippy::unnecessary_operation, clippy::identity_op)]
 const _: () = {
@@ -4049,8 +4230,14 @@ const _: () = {
         [::std::mem::offset_of!(rusage_info_v6, ri_secure_time_in_system) - 352usize];
     ["Offset of field: rusage_info_v6::ri_secure_ptime_in_system"]
         [::std::mem::offset_of!(rusage_info_v6, ri_secure_ptime_in_system) - 360usize];
+    ["Offset of field: rusage_info_v6::ri_neural_footprint"]
+        [::std::mem::offset_of!(rusage_info_v6, ri_neural_footprint) - 368usize];
+    ["Offset of field: rusage_info_v6::ri_lifetime_max_neural_footprint"]
+        [::std::mem::offset_of!(rusage_info_v6, ri_lifetime_max_neural_footprint) - 376usize];
+    ["Offset of field: rusage_info_v6::ri_interval_max_neural_footprint"]
+        [::std::mem::offset_of!(rusage_info_v6, ri_interval_max_neural_footprint) - 384usize];
     ["Offset of field: rusage_info_v6::ri_reserved"]
-        [::std::mem::offset_of!(rusage_info_v6, ri_reserved) - 368usize];
+        [::std::mem::offset_of!(rusage_info_v6, ri_reserved) - 392usize];
 };
 pub type rusage_info_current = rusage_info_v6;
 #[repr(C)]
@@ -4115,42 +4302,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn setrlimit(arg1: ::std::os::raw::c_int, arg2: *const rlimit) -> ::std::os::raw::c_int;
 }
-#[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
-pub struct _OSUnalignedU16 {
-    pub __val: u16,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of _OSUnalignedU16"][::std::mem::size_of::<_OSUnalignedU16>() - 2usize];
-    ["Alignment of _OSUnalignedU16"][::std::mem::align_of::<_OSUnalignedU16>() - 1usize];
-    ["Offset of field: _OSUnalignedU16::__val"]
-        [::std::mem::offset_of!(_OSUnalignedU16, __val) - 0usize];
-};
-#[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
-pub struct _OSUnalignedU32 {
-    pub __val: u32,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of _OSUnalignedU32"][::std::mem::size_of::<_OSUnalignedU32>() - 4usize];
-    ["Alignment of _OSUnalignedU32"][::std::mem::align_of::<_OSUnalignedU32>() - 1usize];
-    ["Offset of field: _OSUnalignedU32::__val"]
-        [::std::mem::offset_of!(_OSUnalignedU32, __val) - 0usize];
-};
-#[repr(C, packed)]
-#[derive(Debug, Copy, Clone)]
-pub struct _OSUnalignedU64 {
-    pub __val: u64,
-}
-#[allow(clippy::unnecessary_operation, clippy::identity_op)]
-const _: () = {
-    ["Size of _OSUnalignedU64"][::std::mem::size_of::<_OSUnalignedU64>() - 8usize];
-    ["Alignment of _OSUnalignedU64"][::std::mem::align_of::<_OSUnalignedU64>() - 1usize];
-    ["Offset of field: _OSUnalignedU64::__val"]
-        [::std::mem::offset_of!(_OSUnalignedU64, __val) - 0usize];
-};
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub union wait {
@@ -4506,7 +4657,7 @@ unsafe extern "C" {
     ) -> pid_t;
 }
 unsafe extern "C" {
-    pub fn alloca(arg1: ::std::os::raw::c_ulong) -> *mut ::std::os::raw::c_void;
+    pub fn alloca(__size: ::std::os::raw::c_ulong) -> *mut ::std::os::raw::c_void;
 }
 pub type ct_rune_t = __darwin_ct_rune_t;
 pub type rune_t = __darwin_rune_t;
@@ -4674,7 +4825,7 @@ unsafe extern "C" {
     ) -> *mut ::std::os::raw::c_void;
 }
 unsafe extern "C" {
-    pub fn valloc(arg1: usize) -> *mut ::std::os::raw::c_void;
+    pub fn valloc(__size: usize) -> *mut ::std::os::raw::c_void;
 }
 unsafe extern "C" {
     pub fn aligned_alloc(
@@ -4697,6 +4848,11 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub fn atexit(arg1: ::std::option::Option<unsafe extern "C" fn()>) -> ::std::os::raw::c_int;
+}
+unsafe extern "C" {
+    pub fn at_quick_exit(
+        arg1: ::std::option::Option<unsafe extern "C" fn()>,
+    ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
     pub fn atof(arg1: *const ::std::os::raw::c_char) -> f64;
@@ -4749,13 +4905,13 @@ unsafe extern "C" {
     pub fn mblen(__s: *const ::std::os::raw::c_char, __n: usize) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn mbstowcs(arg1: *mut wchar_t, arg2: *const ::std::os::raw::c_char, arg3: usize) -> usize;
+    pub fn mbstowcs(arg1: *mut wchar_t, arg2: *const ::std::os::raw::c_char, __n: usize) -> usize;
 }
 unsafe extern "C" {
     pub fn mbtowc(
         arg1: *mut wchar_t,
         arg2: *const ::std::os::raw::c_char,
-        arg3: usize,
+        __n: usize,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -4770,6 +4926,9 @@ unsafe extern "C" {
             ) -> ::std::os::raw::c_int,
         >,
     );
+}
+unsafe extern "C" {
+    pub fn quick_exit(arg1: ::std::os::raw::c_int) -> !;
 }
 unsafe extern "C" {
     pub fn rand() -> ::std::os::raw::c_int;
@@ -4827,7 +4986,7 @@ unsafe extern "C" {
     pub fn system(arg1: *const ::std::os::raw::c_char) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn wcstombs(arg1: *mut ::std::os::raw::c_char, arg2: *const wchar_t, arg3: usize) -> usize;
+    pub fn wcstombs(arg1: *mut ::std::os::raw::c_char, arg2: *const wchar_t, __n: usize) -> usize;
 }
 unsafe extern "C" {
     pub fn wctomb(arg1: *mut ::std::os::raw::c_char, arg2: wchar_t) -> ::std::os::raw::c_int;
@@ -4881,7 +5040,7 @@ unsafe extern "C" {
     pub fn initstate(
         arg1: ::std::os::raw::c_uint,
         arg2: *mut ::std::os::raw::c_char,
-        arg3: usize,
+        __size: usize,
     ) -> *mut ::std::os::raw::c_char;
 }
 unsafe extern "C" {
@@ -4971,7 +5130,10 @@ unsafe extern "C" {
     pub fn arc4random() -> u32;
 }
 unsafe extern "C" {
-    pub fn arc4random_addrandom(arg1: *mut ::std::os::raw::c_uchar, arg2: ::std::os::raw::c_int);
+    pub fn arc4random_addrandom(
+        arg1: *mut ::std::os::raw::c_uchar,
+        __datlen: ::std::os::raw::c_int,
+    );
 }
 unsafe extern "C" {
     pub fn arc4random_buf(__buf: *mut ::std::os::raw::c_void, __nbytes: usize);
@@ -5077,7 +5239,7 @@ unsafe extern "C" {
     ) -> *mut ::std::os::raw::c_char;
 }
 unsafe extern "C" {
-    pub fn getloadavg(arg1: *mut f64, arg2: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
+    pub fn getloadavg(arg1: *mut f64, __nelem: ::std::os::raw::c_int) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
     pub fn getprogname() -> *const ::std::os::raw::c_char;
@@ -5319,6 +5481,23 @@ impl Class {
 }
 impl IClass for Class {}
 pub trait IClass: Sized + std::ops::Deref {}
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone)]
+pub struct Protocol(pub id);
+impl std::ops::Deref for Protocol {
+    type Target = objc::runtime::Object;
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*self.0 }
+    }
+}
+unsafe impl objc::Message for Protocol {}
+impl Protocol {
+    pub fn alloc() -> Self {
+        Self(unsafe { msg_send!(class!(Protocol), alloc) })
+    }
+}
+impl IProtocol for Protocol {}
+pub trait IProtocol: Sized + std::ops::Deref {}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct objc_selector {
@@ -5732,28 +5911,11 @@ pub trait INSObject: Sized + std::ops::Deref {
         unsafe { msg_send!(class!(NSObject), debugDescription) }
     }
 }
-pub type va_list = __builtin_va_list;
 pub type __gnuc_va_list = __builtin_va_list;
+pub type va_list = __builtin_va_list;
 unsafe extern "C" {
     pub static mut NSFoundationVersionNumber: f64;
 }
-#[repr(transparent)]
-#[derive(Debug, Copy, Clone)]
-pub struct Protocol(pub id);
-impl std::ops::Deref for Protocol {
-    type Target = objc::runtime::Object;
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*self.0 }
-    }
-}
-unsafe impl objc::Message for Protocol {}
-impl Protocol {
-    pub fn alloc() -> Self {
-        Self(unsafe { msg_send!(class!(Protocol), alloc) })
-    }
-}
-impl IProtocol for Protocol {}
-pub trait IProtocol: Sized + std::ops::Deref {}
 pub type NSExceptionName = NSString;
 pub type NSRunLoopMode = NSString;
 unsafe extern "C" {
@@ -5814,8 +5976,8 @@ pub const ptrauth_key_ptrauth_key_process_independent_code: ptrauth_key = 0;
 pub const ptrauth_key_ptrauth_key_process_dependent_code: ptrauth_key = 1;
 pub const ptrauth_key_ptrauth_key_process_independent_data: ptrauth_key = 2;
 pub const ptrauth_key_ptrauth_key_process_dependent_data: ptrauth_key = 3;
-pub const ptrauth_key_ptrauth_key_function_pointer: ptrauth_key = 0;
 pub const ptrauth_key_ptrauth_key_return_address: ptrauth_key = 1;
+pub const ptrauth_key_ptrauth_key_function_pointer: ptrauth_key = 0;
 pub const ptrauth_key_ptrauth_key_frame_pointer: ptrauth_key = 3;
 pub const ptrauth_key_ptrauth_key_block_function: ptrauth_key = 0;
 pub const ptrauth_key_ptrauth_key_cxx_vtable_pointer: ptrauth_key = 2;
@@ -6202,6 +6364,7 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn SysBreakFunc(debuggerMsg: ConstStr255Param);
 }
+pub type CFAllocatorTypeID = ::std::os::raw::c_ulonglong;
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone)]
 pub struct NSAttributedString(pub id);
@@ -6483,6 +6646,38 @@ unsafe extern "C" {
         allocator: CFAllocatorRef,
         context: *mut CFAllocatorContext,
     ) -> CFAllocatorRef;
+}
+unsafe extern "C" {
+    pub fn CFAllocatorAllocateTyped(
+        allocator: CFAllocatorRef,
+        size: CFIndex,
+        descriptor: CFAllocatorTypeID,
+        hint: CFOptionFlags,
+    ) -> *mut ::std::os::raw::c_void;
+}
+unsafe extern "C" {
+    pub fn CFAllocatorReallocateTyped(
+        allocator: CFAllocatorRef,
+        ptr: *mut ::std::os::raw::c_void,
+        newsize: CFIndex,
+        descriptor: CFAllocatorTypeID,
+        hint: CFOptionFlags,
+    ) -> *mut ::std::os::raw::c_void;
+}
+unsafe extern "C" {
+    pub fn CFAllocatorAllocateBytes(
+        allocator: CFAllocatorRef,
+        size: CFIndex,
+        hint: CFOptionFlags,
+    ) -> *mut ::std::os::raw::c_void;
+}
+unsafe extern "C" {
+    pub fn CFAllocatorReallocateBytes(
+        allocator: CFAllocatorRef,
+        ptr: *mut ::std::os::raw::c_void,
+        newsize: CFIndex,
+        hint: CFOptionFlags,
+    ) -> *mut ::std::os::raw::c_void;
 }
 unsafe extern "C" {
     pub fn CFAllocatorAllocate(
@@ -9718,6 +9913,25 @@ pub trait NSCoder_NSExtendedCoder: Sized + std::ops::Deref {
     {
         unsafe { msg_send ! (* self , decodeBytesForKey : key returnedLength : lengthp) }
     }
+    unsafe fn decodeBytesWithMinimumLength_(
+        &self,
+        length: NSUInteger,
+    ) -> *mut ::std::os::raw::c_void
+    where
+        <Self as std::ops::Deref>::Target: objc::Message + Sized,
+    {
+        unsafe { msg_send ! (* self , decodeBytesWithMinimumLength : length) }
+    }
+    unsafe fn decodeBytesForKey_minimumLength_(
+        &self,
+        key: NSString,
+        length: NSUInteger,
+    ) -> *const u8
+    where
+        <Self as std::ops::Deref>::Target: objc::Message + Sized,
+    {
+        unsafe { msg_send ! (* self , decodeBytesForKey : key minimumLength : length) }
+    }
     unsafe fn encodeInteger_forKey_(&self, value: NSInteger, key: NSString)
     where
         <Self as std::ops::Deref>::Target: objc::Message + Sized,
@@ -9948,17 +10162,17 @@ pub struct _RuneLocale {
     pub __encoding: [::std::os::raw::c_char; 32usize],
     pub __sgetrune: ::std::option::Option<
         unsafe extern "C" fn(
-            arg1: *const ::std::os::raw::c_char,
-            arg2: __darwin_size_t,
-            arg3: *mut *const ::std::os::raw::c_char,
+            __string: *const ::std::os::raw::c_char,
+            __n: __darwin_size_t,
+            arg1: *mut *const ::std::os::raw::c_char,
         ) -> __darwin_rune_t,
     >,
     pub __sputrune: ::std::option::Option<
         unsafe extern "C" fn(
             arg1: __darwin_rune_t,
-            arg2: *mut ::std::os::raw::c_char,
-            arg3: __darwin_size_t,
-            arg4: *mut *mut ::std::os::raw::c_char,
+            __string: *mut ::std::os::raw::c_char,
+            __n: __darwin_size_t,
+            arg2: *mut *mut ::std::os::raw::c_char,
         ) -> ::std::os::raw::c_int,
     >,
     pub __invalid_rune: __darwin_rune_t,
@@ -10114,8 +10328,30 @@ const _: () = {
     ["Offset of field: lconv::int_n_sign_posn"]
         [::std::mem::offset_of!(lconv, int_n_sign_posn) - 93usize];
 };
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct _xlocale {
+    _unused: [u8; 0],
+}
+pub type locale_t = *mut _xlocale;
+unsafe extern "C" {
+    pub fn duplocale(arg1: locale_t) -> locale_t;
+}
+unsafe extern "C" {
+    pub fn freelocale(arg1: locale_t) -> ::std::os::raw::c_int;
+}
 unsafe extern "C" {
     pub fn localeconv() -> *mut lconv;
+}
+unsafe extern "C" {
+    pub fn newlocale(
+        arg1: ::std::os::raw::c_int,
+        arg2: *const ::std::os::raw::c_char,
+        arg3: locale_t,
+    ) -> locale_t;
+}
+unsafe extern "C" {
+    pub fn uselocale(arg1: locale_t) -> locale_t;
 }
 unsafe extern "C" {
     pub fn setlocale(
@@ -10674,6 +10910,49 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn __tanpi(arg1: f64) -> f64;
 }
+unsafe extern "C" {
+    pub fn __fabsf16(arg1: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __hypotf16(arg1: __BindgenFloat16, arg2: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __sqrtf16(arg1: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __ceilf16(arg1: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __floorf16(arg1: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __rintf16(arg1: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __roundf16(arg1: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __truncf16(arg1: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __copysignf16(arg1: __BindgenFloat16, arg2: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __nextafterf16(arg1: __BindgenFloat16, arg2: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __fmaxf16(arg1: __BindgenFloat16, arg2: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __fminf16(arg1: __BindgenFloat16, arg2: __BindgenFloat16) -> __BindgenFloat16;
+}
+unsafe extern "C" {
+    pub fn __fmaf16(
+        arg1: __BindgenFloat16,
+        arg2: __BindgenFloat16,
+        arg3: __BindgenFloat16,
+    ) -> __BindgenFloat16;
+}
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct __float2 {
@@ -10931,6 +11210,9 @@ unsafe extern "C" {
         arg5: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
 }
+unsafe extern "C" {
+    pub fn printf(arg1: *const ::std::os::raw::c_char, ...) -> ::std::os::raw::c_int;
+}
 pub type fpos_t = __darwin_off_t;
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -10968,7 +11250,7 @@ pub struct __sFILE {
         unsafe extern "C" fn(
             arg1: *mut ::std::os::raw::c_void,
             arg2: *mut ::std::os::raw::c_char,
-            arg3: ::std::os::raw::c_int,
+            __n: ::std::os::raw::c_int,
         ) -> ::std::os::raw::c_int,
     >,
     pub _seek: ::std::option::Option<
@@ -10982,7 +11264,7 @@ pub struct __sFILE {
         unsafe extern "C" fn(
             arg1: *mut ::std::os::raw::c_void,
             arg2: *const ::std::os::raw::c_char,
-            arg3: ::std::os::raw::c_int,
+            __n: ::std::os::raw::c_int,
         ) -> ::std::os::raw::c_int,
     >,
     pub _ub: __sbuf,
@@ -11053,8 +11335,8 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn fgets(
         arg1: *mut ::std::os::raw::c_char,
-        arg2: ::std::os::raw::c_int,
-        arg3: *mut FILE,
+        __size: ::std::os::raw::c_int,
+        arg2: *mut FILE,
     ) -> *mut ::std::os::raw::c_char;
 }
 unsafe extern "C" {
@@ -11132,9 +11414,6 @@ unsafe extern "C" {
     pub fn perror(arg1: *const ::std::os::raw::c_char);
 }
 unsafe extern "C" {
-    pub fn printf(arg1: *const ::std::os::raw::c_char, ...) -> ::std::os::raw::c_int;
-}
-unsafe extern "C" {
     pub fn putc(arg1: ::std::os::raw::c_int, arg2: *mut FILE) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -11166,7 +11445,7 @@ unsafe extern "C" {
         arg1: *mut FILE,
         arg2: *mut ::std::os::raw::c_char,
         arg3: ::std::os::raw::c_int,
-        arg4: usize,
+        __size: usize,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -11381,7 +11660,7 @@ unsafe extern "C" {
     pub fn ctermid_r(arg1: *mut ::std::os::raw::c_char) -> *mut ::std::os::raw::c_char;
 }
 unsafe extern "C" {
-    pub fn fgetln(arg1: *mut FILE, arg2: *mut usize) -> *mut ::std::os::raw::c_char;
+    pub fn fgetln(arg1: *mut FILE, __len: *mut usize) -> *mut ::std::os::raw::c_char;
 }
 unsafe extern "C" {
     pub fn fmtcheck(
@@ -11396,7 +11675,7 @@ unsafe extern "C" {
     pub fn setbuffer(
         arg1: *mut FILE,
         arg2: *mut ::std::os::raw::c_char,
-        arg3: ::std::os::raw::c_int,
+        __size: ::std::os::raw::c_int,
     );
 }
 unsafe extern "C" {
@@ -11416,14 +11695,14 @@ unsafe extern "C" {
             unsafe extern "C" fn(
                 arg1: *mut ::std::os::raw::c_void,
                 arg2: *mut ::std::os::raw::c_char,
-                arg3: ::std::os::raw::c_int,
+                __n: ::std::os::raw::c_int,
             ) -> ::std::os::raw::c_int,
         >,
         arg3: ::std::option::Option<
             unsafe extern "C" fn(
                 arg1: *mut ::std::os::raw::c_void,
                 arg2: *const ::std::os::raw::c_char,
-                arg3: ::std::os::raw::c_int,
+                __n: ::std::os::raw::c_int,
             ) -> ::std::os::raw::c_int,
         >,
         arg4: ::std::option::Option<
@@ -11450,10 +11729,10 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn __snprintf_chk(
         arg1: *mut ::std::os::raw::c_char,
-        arg2: usize,
-        arg3: ::std::os::raw::c_int,
-        arg4: usize,
-        arg5: *const ::std::os::raw::c_char,
+        __maxlen: usize,
+        arg2: ::std::os::raw::c_int,
+        arg3: usize,
+        arg4: *const ::std::os::raw::c_char,
         ...
     ) -> ::std::os::raw::c_int;
 }
@@ -11469,11 +11748,11 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn __vsnprintf_chk(
         arg1: *mut ::std::os::raw::c_char,
-        arg2: usize,
-        arg3: ::std::os::raw::c_int,
-        arg4: usize,
-        arg5: *const ::std::os::raw::c_char,
-        arg6: va_list,
+        __maxlen: usize,
+        arg2: ::std::os::raw::c_int,
+        arg3: usize,
+        arg4: *const ::std::os::raw::c_char,
+        arg5: va_list,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -11705,6 +11984,12 @@ unsafe extern "C" {
     ) -> *mut ::std::os::raw::c_char;
 }
 unsafe extern "C" {
+    pub fn strchrnul(
+        __s: *const ::std::os::raw::c_char,
+        __c: ::std::os::raw::c_int,
+    ) -> *mut ::std::os::raw::c_char;
+}
+unsafe extern "C" {
     pub fn strnstr(
         __big: *const ::std::os::raw::c_char,
         __little: *const ::std::os::raw::c_char,
@@ -11738,7 +12023,7 @@ unsafe extern "C" {
     pub fn swab(
         arg1: *const ::std::os::raw::c_void,
         arg2: *mut ::std::os::raw::c_void,
-        arg3: isize,
+        __len: isize,
     );
 }
 unsafe extern "C" {
@@ -11759,18 +12044,18 @@ unsafe extern "C" {
     pub fn bcmp(
         arg1: *const ::std::os::raw::c_void,
         arg2: *const ::std::os::raw::c_void,
-        arg3: ::std::os::raw::c_ulong,
+        __n: ::std::os::raw::c_ulong,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
     pub fn bcopy(
         arg1: *const ::std::os::raw::c_void,
         arg2: *mut ::std::os::raw::c_void,
-        arg3: usize,
+        __n: ::std::os::raw::c_ulong,
     );
 }
 unsafe extern "C" {
-    pub fn bzero(arg1: *mut ::std::os::raw::c_void, arg2: ::std::os::raw::c_ulong);
+    pub fn bzero(arg1: *mut ::std::os::raw::c_void, __n: ::std::os::raw::c_ulong);
 }
 unsafe extern "C" {
     pub fn index(
@@ -11898,9 +12183,9 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn strftime(
         arg1: *mut ::std::os::raw::c_char,
-        arg2: usize,
-        arg3: *const ::std::os::raw::c_char,
-        arg4: *const tm,
+        __maxsize: usize,
+        arg2: *const ::std::os::raw::c_char,
+        arg3: *const tm,
     ) -> usize;
 }
 unsafe extern "C" {
@@ -12588,6 +12873,42 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn CFBitVectorSetAllBits(bv: CFMutableBitVectorRef, value: CFBit);
 }
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct _OSUnalignedU16 {
+    pub __val: u16,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _OSUnalignedU16"][::std::mem::size_of::<_OSUnalignedU16>() - 2usize];
+    ["Alignment of _OSUnalignedU16"][::std::mem::align_of::<_OSUnalignedU16>() - 1usize];
+    ["Offset of field: _OSUnalignedU16::__val"]
+        [::std::mem::offset_of!(_OSUnalignedU16, __val) - 0usize];
+};
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct _OSUnalignedU32 {
+    pub __val: u32,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _OSUnalignedU32"][::std::mem::size_of::<_OSUnalignedU32>() - 4usize];
+    ["Alignment of _OSUnalignedU32"][::std::mem::align_of::<_OSUnalignedU32>() - 1usize];
+    ["Offset of field: _OSUnalignedU32::__val"]
+        [::std::mem::offset_of!(_OSUnalignedU32, __val) - 0usize];
+};
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct _OSUnalignedU64 {
+    pub __val: u64,
+}
+#[allow(clippy::unnecessary_operation, clippy::identity_op)]
+const _: () = {
+    ["Size of _OSUnalignedU64"][::std::mem::size_of::<_OSUnalignedU64>() - 8usize];
+    ["Alignment of _OSUnalignedU64"][::std::mem::align_of::<_OSUnalignedU64>() - 1usize];
+    ["Offset of field: _OSUnalignedU64::__val"]
+        [::std::mem::offset_of!(_OSUnalignedU64, __val) - 0usize];
+};
 pub const OSUnknownByteOrder: _bindgen_ty_8 = 0;
 pub const OSLittleEndian: _bindgen_ty_8 = 1;
 pub const OSBigEndian: _bindgen_ty_8 = 2;
@@ -14348,6 +14669,7 @@ pub const CFCalendarUnit_kCFCalendarUnitQuarter: CFCalendarUnit = 2048;
 pub const CFCalendarUnit_kCFCalendarUnitWeekOfMonth: CFCalendarUnit = 4096;
 pub const CFCalendarUnit_kCFCalendarUnitWeekOfYear: CFCalendarUnit = 8192;
 pub const CFCalendarUnit_kCFCalendarUnitYearForWeekOfYear: CFCalendarUnit = 16384;
+pub const CFCalendarUnit_kCFCalendarUnitDayOfYear: CFCalendarUnit = 65536;
 pub type CFCalendarUnit = CFOptionFlags;
 unsafe extern "C" {
     pub fn CFCalendarGetMinimumRangeOfUnit(
@@ -15026,6 +15348,9 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub static kCFNumberFormatterMaxSignificantDigits: CFNumberFormatterKey;
+}
+unsafe extern "C" {
+    pub static kCFNumberFormatterMinGroupingDigits: CFNumberFormatterKey;
 }
 pub const CFNumberFormatterRoundingMode_kCFNumberFormatterRoundCeiling:
     CFNumberFormatterRoundingMode = 0;
@@ -16279,6 +16604,8 @@ pub const mach_port_guard_exception_codes_kGUARD_EXC_THREAD_SET_STATE:
     mach_port_guard_exception_codes = 5;
 pub const mach_port_guard_exception_codes_kGUARD_EXC_EXCEPTION_BEHAVIOR_ENFORCE:
     mach_port_guard_exception_codes = 6;
+pub const mach_port_guard_exception_codes_kGUARD_EXC_SERVICE_PORT_VIOLATION_FATAL:
+    mach_port_guard_exception_codes = 7;
 pub const mach_port_guard_exception_codes_kGUARD_EXC_UNGUARDED: mach_port_guard_exception_codes = 8;
 pub const mach_port_guard_exception_codes_kGUARD_EXC_INCORRECT_GUARD:
     mach_port_guard_exception_codes = 16;
@@ -16314,6 +16641,10 @@ pub const mach_port_guard_exception_codes_kGUARD_EXC_RCV_INVALID_NAME:
     mach_port_guard_exception_codes = 524288;
 pub const mach_port_guard_exception_codes_kGUARD_EXC_RCV_GUARDED_DESC:
     mach_port_guard_exception_codes = 1048576;
+pub const mach_port_guard_exception_codes_kGUARD_EXC_SERVICE_PORT_VIOLATION_NON_FATAL:
+    mach_port_guard_exception_codes = 1048577;
+pub const mach_port_guard_exception_codes_kGUARD_EXC_PROVISIONAL_REPLY_PORT:
+    mach_port_guard_exception_codes = 1048578;
 pub const mach_port_guard_exception_codes_kGUARD_EXC_MOD_REFS_NON_FATAL:
     mach_port_guard_exception_codes = 2097152;
 pub const mach_port_guard_exception_codes_kGUARD_EXC_IMMOVABLE_NON_FATAL:
@@ -17207,7 +17538,7 @@ unsafe extern "C" {
     ) -> ::std::os::raw::c_long;
 }
 unsafe extern "C" {
-    pub fn getcwd(arg1: *mut ::std::os::raw::c_char, arg2: usize) -> *mut ::std::os::raw::c_char;
+    pub fn getcwd(arg1: *mut ::std::os::raw::c_char, __size: usize) -> *mut ::std::os::raw::c_char;
 }
 unsafe extern "C" {
     pub fn getegid() -> gid_t;
@@ -17219,7 +17550,10 @@ unsafe extern "C" {
     pub fn getgid() -> gid_t;
 }
 unsafe extern "C" {
-    pub fn getgroups(arg1: ::std::os::raw::c_int, arg2: *mut gid_t) -> ::std::os::raw::c_int;
+    pub fn getgroups(
+        __gidsetsize: ::std::os::raw::c_int,
+        arg1: *mut gid_t,
+    ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
     pub fn getlogin() -> *mut ::std::os::raw::c_char;
@@ -17264,7 +17598,7 @@ unsafe extern "C" {
     pub fn read(
         arg1: ::std::os::raw::c_int,
         arg2: *mut ::std::os::raw::c_void,
-        arg3: usize,
+        __nbyte: usize,
     ) -> isize;
 }
 unsafe extern "C" {
@@ -17301,7 +17635,7 @@ unsafe extern "C" {
     pub fn ttyname_r(
         arg1: ::std::os::raw::c_int,
         arg2: *mut ::std::os::raw::c_char,
-        arg3: usize,
+        __len: usize,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17318,14 +17652,14 @@ unsafe extern "C" {
     pub fn confstr(
         arg1: ::std::os::raw::c_int,
         arg2: *mut ::std::os::raw::c_char,
-        arg3: usize,
+        __len: usize,
     ) -> usize;
 }
 unsafe extern "C" {
     pub fn getopt(
-        arg1: ::std::os::raw::c_int,
-        arg2: *const *mut ::std::os::raw::c_char,
-        arg3: *const ::std::os::raw::c_char,
+        __argc: ::std::os::raw::c_int,
+        arg1: *const *mut ::std::os::raw::c_char,
+        arg2: *const ::std::os::raw::c_char,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17446,19 +17780,23 @@ unsafe extern "C" {
     pub fn ftruncate(arg1: ::std::os::raw::c_int, arg2: off_t) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn getlogin_r(arg1: *mut ::std::os::raw::c_char, arg2: usize) -> ::std::os::raw::c_int;
+    pub fn getlogin_r(arg1: *mut ::std::os::raw::c_char, __namelen: usize)
+        -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
     pub fn fchown(arg1: ::std::os::raw::c_int, arg2: uid_t, arg3: gid_t) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
-    pub fn gethostname(arg1: *mut ::std::os::raw::c_char, arg2: usize) -> ::std::os::raw::c_int;
+    pub fn gethostname(
+        arg1: *mut ::std::os::raw::c_char,
+        __namelen: usize,
+    ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
     pub fn readlink(
         arg1: *const ::std::os::raw::c_char,
         arg2: *mut ::std::os::raw::c_char,
-        arg3: usize,
+        __bufsize: usize,
     ) -> isize;
 }
 unsafe extern "C" {
@@ -17496,9 +17834,9 @@ pub type uuid_t = __darwin_uuid_t;
 unsafe extern "C" {
     pub fn accessx_np(
         arg1: *const accessx_descriptor,
-        arg2: usize,
-        arg3: *mut ::std::os::raw::c_int,
-        arg4: uid_t,
+        __sz: usize,
+        arg2: *mut ::std::os::raw::c_int,
+        arg3: uid_t,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17507,9 +17845,9 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn add_profil(
         arg1: *mut ::std::os::raw::c_char,
-        arg2: usize,
-        arg3: ::std::os::raw::c_ulong,
-        arg4: ::std::os::raw::c_uint,
+        __bufsiz: usize,
+        arg2: ::std::os::raw::c_ulong,
+        arg3: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17528,7 +17866,7 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn getdomainname(
         arg1: *mut ::std::os::raw::c_char,
-        arg2: ::std::os::raw::c_int,
+        __namelen: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17536,7 +17874,7 @@ unsafe extern "C" {
         arg1: *const ::std::os::raw::c_char,
         arg2: ::std::os::raw::c_int,
         arg3: *mut ::std::os::raw::c_int,
-        arg4: *mut ::std::os::raw::c_int,
+        __ngroups: *mut ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17655,9 +17993,9 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn profil(
         arg1: *mut ::std::os::raw::c_char,
-        arg2: usize,
-        arg3: ::std::os::raw::c_ulong,
-        arg4: ::std::os::raw::c_uint,
+        __bufsiz: usize,
+        arg2: ::std::os::raw::c_ulong,
+        arg3: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17730,7 +18068,7 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn setdomainname(
         arg1: *const ::std::os::raw::c_char,
-        arg2: ::std::os::raw::c_int,
+        __namelen: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17742,7 +18080,7 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub fn sethostname(
         arg1: *const ::std::os::raw::c_char,
-        arg2: ::std::os::raw::c_int,
+        __namelen: ::std::os::raw::c_int,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17799,8 +18137,8 @@ unsafe extern "C" {
         arg1: ::std::os::raw::c_int,
         arg2: *mut ::std::os::raw::c_void,
         arg3: *mut ::std::os::raw::c_void,
-        arg4: usize,
-        arg5: ::std::os::raw::c_uint,
+        __attrBufSize: usize,
+        arg4: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17808,8 +18146,8 @@ unsafe extern "C" {
         arg1: ::std::os::raw::c_int,
         arg2: *mut ::std::os::raw::c_void,
         arg3: *mut ::std::os::raw::c_void,
-        arg4: usize,
-        arg5: ::std::os::raw::c_uint,
+        __attrBufSize: usize,
+        arg4: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17817,8 +18155,8 @@ unsafe extern "C" {
         arg1: *const ::std::os::raw::c_char,
         arg2: *mut ::std::os::raw::c_void,
         arg3: *mut ::std::os::raw::c_void,
-        arg4: usize,
-        arg5: ::std::os::raw::c_uint,
+        __attrBufSize: usize,
+        arg4: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17826,8 +18164,8 @@ unsafe extern "C" {
         arg1: *const ::std::os::raw::c_char,
         arg2: *mut ::std::os::raw::c_void,
         arg3: *mut ::std::os::raw::c_void,
-        arg4: usize,
-        arg5: ::std::os::raw::c_uint,
+        __attrBufSize: usize,
+        arg4: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
 }
 unsafe extern "C" {
@@ -17842,11 +18180,11 @@ unsafe extern "C" {
         arg1: ::std::os::raw::c_int,
         arg2: *mut ::std::os::raw::c_void,
         arg3: *mut ::std::os::raw::c_void,
-        arg4: usize,
+        __attrBufSize: usize,
+        arg4: *mut ::std::os::raw::c_uint,
         arg5: *mut ::std::os::raw::c_uint,
         arg6: *mut ::std::os::raw::c_uint,
-        arg7: *mut ::std::os::raw::c_uint,
-        arg8: ::std::os::raw::c_uint,
+        arg7: ::std::os::raw::c_uint,
     ) -> ::std::os::raw::c_int;
 }
 #[repr(C)]
@@ -22624,6 +22962,15 @@ unsafe extern "C" {
     ) -> CFStringRef;
 }
 unsafe extern "C" {
+    pub fn CFBundleCopyLocalizedStringForLocalizations(
+        bundle: CFBundleRef,
+        key: CFStringRef,
+        value: CFStringRef,
+        tableName: CFStringRef,
+        localizations: CFArrayRef,
+    ) -> CFStringRef;
+}
+unsafe extern "C" {
     pub fn CFBundleCopyResourceURLInDirectory(
         bundleURL: CFURLRef,
         resourceName: CFStringRef,
@@ -23231,6 +23578,15 @@ unsafe extern "C" {
 }
 unsafe extern "C" {
     pub fn CFAttributedStringEndEditing(aStr: CFMutableAttributedStringRef);
+}
+unsafe extern "C" {
+    pub fn CFAttributedStringGetBidiLevelsAndResolvedDirections(
+        attributedString: CFAttributedStringRef,
+        range: CFRange,
+        baseDirection: i8,
+        bidiLevels: *mut u8,
+        baseDirections: *mut u8,
+    ) -> bool;
 }
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
