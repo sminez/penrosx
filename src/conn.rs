@@ -348,6 +348,9 @@ impl OsxConn {
 
 impl Conn for OsxConn {
     type Event = Event;
+    type State = ();
+
+    fn initial_state(&mut self) -> Self::State {}
 
     fn root(&mut self) -> WinId {
         ROOT
