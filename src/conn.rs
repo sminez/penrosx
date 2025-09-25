@@ -116,6 +116,7 @@ impl OsxConn {
         // using that to see if we need to pull the rest of the info when needed
         self.windows = OsxWindow::current_windows()
             .into_iter()
+            .filter(|win| win.window_layer == 0)
             .map(|win| (win.win_id, win))
             .collect();
     }
