@@ -68,6 +68,7 @@ impl OsxConn {
 
     pub fn init_wm_and_run(
         mut self,
+        mtm: MainThreadMarker,
         config: Config<Self>,
         key_bindings: KeyBindings<Self>,
         mouse_bindings: MouseBindings<Self>,
@@ -78,7 +79,7 @@ impl OsxConn {
         self.set_hide_pt().unwrap();
 
         autoreleasepool(|_| unsafe {
-            let app = NSApp(MainThreadMarker::new().unwrap());
+            let app = NSApp(mtm);
             app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
             spawn(move || {

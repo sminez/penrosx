@@ -19,7 +19,7 @@ use penrose::{
     },
     map, stack,
 };
-use penrosx::{conn::OsxConn, event::Event};
+use penrosx::{MainThreadMarker, conn::OsxConn, event::Event};
 use std::{collections::HashMap, io::stdout, sync::mpsc::Sender};
 use tracing::subscriber::set_global_default;
 use tracing_subscriber::FmtSubscriber;
@@ -37,8 +37,9 @@ fn main() -> anyhow::Result<()> {
     };
 
     let conn = OsxConn::new();
+    let mtm = MainThreadMarker::new().unwrap();
     let (_manager, key_bindings) = register_global_hotkeys(conn.event_tx())?;
-    conn.init_wm_and_run(config, key_bindings, HashMap::default(), |_| Ok(()));
+    conn.init_wm_and_run(mtm, config, key_bindings, HashMap::default(), |_| Ok(()));
 
     Ok(())
 }

@@ -16,6 +16,8 @@
     issue_tracker_base_url = "https://github.com/sminez/penrosx/issues/"
 )]
 
+pub use objc2::MainThreadMarker;
+
 pub mod conn;
 pub mod event;
 pub mod sys;
