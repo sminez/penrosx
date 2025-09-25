@@ -1,23 +1,18 @@
+//! A handle to an OSX window.
 use crate::{
-    nsworkspace::{
-        INSRunningApplication,
-        NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
-        NSRunningApplication, NSString_NSStringDeprecated,
-    },
-    sys::{APP_NOTIFICATIONS, AXObserverWrapper, WIN_NOTIFICATIONS, get_axwindow, rect_from_cg},
+    Pid,
+    sys::{AXObserverWrapper, bool_attr},
 };
-use accessibility::{
-    AXAttribute, AXUIElementActions, AXUIElementAttributes, ui_element::AXUIElement,
-};
+use accessibility::{AXAttribute, AXUIElement, AXUIElementActions, AXUIElementAttributes};
 use accessibility_sys::{
-    AXUIElementCopyAttributeValue, AXUIElementCreateApplication, AXUIElementPerformAction,
+    AXError, AXUIElementCopyAttributeValue, AXUIElementPerformAction, AXUIElementRef,
     AXUIElementSetAttributeValue, AXValueCreate, kAXCloseButtonAttribute, kAXErrorSuccess,
-    kAXPositionAttribute, kAXPressAction, kAXSizeAttribute, kAXValueTypeCGPoint,
-    kAXValueTypeCGSize,
+    kAXMovedNotification, kAXPositionAttribute, kAXPressAction, kAXResizedNotification,
+    kAXSizeAttribute, kAXUIElementDestroyedNotification, kAXValueTypeCGPoint, kAXValueTypeCGSize,
+    kAXWindowDeminiaturizedNotification, kAXWindowMiniaturizedNotification,
 };
 use core_foundation::{
     base::{TCFType, ToVoid},
-    boolean::CFBoolean,
     dictionary::CFDictionary,
     string::CFString,
 };
@@ -28,13 +23,11 @@ use core_foundation_sys::{
 };
 use core_graphics::{
     display::{CGDisplay, CGPoint, CGRect, CGSize},
-    window,
+    window::{CGWindowID, kCGWindowListExcludeDesktopElements, kCGWindowListOptionOnScreenOnly},
 };
 use penrose::{Result, WinId, custom_error, pure::geometry::Rect};
-use std::ffi::{CStr, c_void};
+use std::ffi::c_void;
 use tracing::error;
-
-pub type Pid = i32;
 
 macro_rules! set_attr {
     ($axwin:expr, $val:expr, $ty:expr, $name:expr) => {
@@ -55,35 +48,15 @@ macro_rules! set_attr {
     };
 }
 
-fn bool_attr(elem: &AXUIElement, attr: &str) -> bool {
-    match elem.attribute(&AXAttribute::new(&CFString::new(attr))) {
-        Ok(attr) => attr.downcast::<CFBoolean>() == Some(CFBoolean::true_value()),
-        Err(_) => false,
-    }
-}
+pub(crate) static WIN_NOTIFICATIONS: [&str; 5] = [
+    kAXUIElementDestroyedNotification,
+    kAXWindowDeminiaturizedNotification,
+    kAXWindowMiniaturizedNotification,
+    kAXMovedNotification,
+    kAXResizedNotification,
+];
 
-fn set_bool_attr(elem: &AXUIElement, attr: &str, val: bool) -> Result<()> {
-    let val = if val {
-        CFBoolean::true_value()
-    } else {
-        CFBoolean::false_value()
-    };
-
-    unsafe {
-        let err = AXUIElementSetAttributeValue(
-            elem.as_concrete_TypeRef(),
-            CFString::new("AXEnhancedUserInterface").as_concrete_TypeRef(),
-            val.as_concrete_TypeRef() as _,
-        );
-
-        if err == kAXErrorSuccess {
-            Ok(())
-        } else {
-            Err(custom_error!("unable to set {} attr: {}", attr, err))
-        }
-    }
-}
-
+/// A handle to a running OSX window
 #[derive(Debug, Clone)]
 pub struct OsxWindow {
     pub(crate) win_id: WinId,
@@ -103,7 +76,7 @@ unsafe impl Sync for OsxWindow {}
 impl OsxWindow {
     pub fn current_windows() -> Vec<Self> {
         let raw_infos = CGDisplay::window_list_info(
-            window::kCGWindowListExcludeDesktopElements | window::kCGWindowListOptionOnScreenOnly,
+            kCGWindowListExcludeDesktopElements | kCGWindowListOptionOnScreenOnly,
             None,
         );
         let mut infos = Vec::new();
@@ -232,61 +205,42 @@ impl OsxWindow {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct OsxApp {
-    pub(crate) name: String,
-    pub(crate) app: NSRunningApplication,
-    // observers needs to be before axapp so we drop in the correct order
-    pub(crate) _observers: Vec<AXObserverWrapper>,
-    pub(crate) axapp: AXUIElement,
+fn rect_from_cg(r: CGRect) -> Rect {
+    Rect::new(
+        r.origin.x as i32,
+        r.origin.y as i32,
+        r.size.width as u32,
+        r.size.height as u32,
+    )
 }
 
-unsafe impl Send for OsxApp {}
-unsafe impl Sync for OsxApp {}
+// /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers
 
-impl OsxApp {
-    pub fn try_new(app: NSRunningApplication) -> Result<Self> {
+// Private API that makes everything possible for mapping between the Accessibility API and
+// CoreGraphics
+unsafe extern "C" {
+    pub fn _AXUIElementGetWindow(element: AXUIElementRef, out: *mut CGWindowID) -> AXError;
+}
+
+/// Attempt to get an [AXUIElement] for the accessibility API for the given application window
+/// (identified by pid and window id)
+pub(crate) fn get_axwindow(pid: i32, winid: u32) -> Option<AXUIElement> {
+    let attr = AXUIElement::application(pid)
+        .attribute(&AXAttribute::windows())
+        .ok()?;
+
+    for ax_window in attr.get_all_values().into_iter() {
         unsafe {
-            let pid = app.processIdentifier();
-            let name = CStr::from_ptr(app.localizedName().cString())
-                .to_string_lossy()
-                .to_string();
-            let axapp = AXUIElementCreateApplication(pid);
-            // disgusting
-            let pid_ptr: *mut c_void = std::ptr::without_provenance_mut(pid as usize);
-            let observers = APP_NOTIFICATIONS
-                .into_iter()
-                .map(|s| AXObserverWrapper::try_new(pid, s, axapp, pid_ptr))
-                .collect::<Result<Vec<_>>>()?;
-
-            Ok(Self {
-                name,
-                app,
-                axapp: AXUIElement::wrap_under_get_rule(axapp),
-                _observers: observers,
-            })
+            let mut id: CGWindowID = 0;
+            if _AXUIElementGetWindow(ax_window as AXUIElementRef, &mut id) == kAXErrorSuccess
+                && id == winid
+            {
+                return Some(AXUIElement::wrap_under_get_rule(
+                    ax_window as AXUIElementRef,
+                ));
+            }
         }
     }
 
-    pub(crate) fn enhanced_user_interface_enabled(&self) -> bool {
-        bool_attr(&self.axapp, "AXEnhancedUserInterface")
-    }
-
-    pub(crate) fn set_enhanced_user_interface(&self, on: bool) -> Result<()> {
-        set_bool_attr(&self.axapp, "AXEnhancedUserInterface", on)
-    }
-
-    pub fn activate(&self) {
-        unsafe {
-            self.app.activateWithOptions_(
-                NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
-            );
-        }
-    }
-
-    pub(crate) fn focused_ax_window(&self) -> Result<AXUIElement> {
-        self.axapp
-            .attribute(&AXAttribute::focused_window())
-            .map_err(|e| custom_error!("unable to get focused window for {}: {}", self.name, e))
-    }
+    None
 }

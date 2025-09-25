@@ -1,22 +1,24 @@
+//! PenrOSX - An OSX backend for Penrose
+
+#![warn(
+    clippy::complexity,
+    clippy::correctness,
+    clippy::style,
+    future_incompatible,
+    missing_debug_implementations,
+    // missing_docs,
+    rust_2018_idioms,
+    rustdoc::all,
+    // clippy::undocumented_unsafe_blocks
+)]
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/sminez/penrose/develop/icon.svg",
+    issue_tracker_base_url = "https://github.com/sminez/penrosx/issues/"
+)]
+
 pub mod conn;
-
-#[allow(
-    unsafe_op_in_unsafe_fn,
-    non_upper_case_globals,
-    non_camel_case_types,
-    improper_ctypes,
-    unexpected_cfgs,
-    non_snake_case,
-    clippy::all,
-    dead_code,
-    clippy::not_unsafe_ptr_arg_deref,
-    reason = "generated code"
-)]
-#[expect(
-    unnecessary_transmutes,
-    reason = "bindgen codegen under Rust 1.88+ - https://github.com/rust-lang/rust-bindgen/issues/3241"
-)]
-pub(crate) mod nsworkspace;
-
+pub mod event;
 pub mod sys;
-pub mod win;
+
+/// An application process ID.
+pub type Pid = i32;

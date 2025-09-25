@@ -1,3 +1,6 @@
+//! This is the initial demo of the Conn impl from this crate working in a minimal way.
+//! There is still a lot to sort out and keybindings need to be handled internally rather than
+//! pulling in the global_hotkey crate but it's a start.
 use anyhow::Context;
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager, HotKeyState, hotkey::HotKey};
 use penrose::{
@@ -16,7 +19,7 @@ use penrose::{
     },
     map, stack,
 };
-use penrosx::{conn::OsxConn, sys::Event};
+use penrosx::{conn::OsxConn, event::Event};
 use std::{collections::HashMap, io::stdout, sync::mpsc::Sender};
 use tracing::subscriber::set_global_default;
 use tracing_subscriber::FmtSubscriber;

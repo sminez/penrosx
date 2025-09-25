@@ -1,35 +1,31 @@
-//! A Conn impl for OSX
+//! The [Conn] implementation itself.
 use crate::{
-    nsworkspace::{
-        INSRunningApplication,
-        NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
-        NSRunningApplication,
-    },
+    Pid,
+    event::Event,
     sys::{
-        EVENT_SENDER, Event, global_observer, proc_is_ax_trusted, register_observers,
-        running_applications, set_ax_timeout,
+        EVENT_SENDER, GlobalObserver, OsxApp, OsxWindow, check_ax_permissions_and_prompt,
+        set_ax_timeout,
     },
-    win::{OsxApp, OsxWindow, Pid},
 };
 use accessibility::AXUIElement;
-use cocoa::{
-    appkit::{
-        NSApp, NSApplication, NSApplicationActivationPolicy::NSApplicationActivationPolicyRegular,
-    },
-    base::nil,
-    foundation::NSAutoreleasePool,
-};
 use core_graphics::{
     display::{CGDisplay, CGPoint},
     event::CGEvent,
     event_source::{CGEventSource, CGEventSourceStateID},
 };
+use objc2::{
+    MainThreadMarker,
+    rc::{Retained, autoreleasepool},
+};
+use objc2_app_kit::{
+    NSApp, NSApplicationActivationOptions, NSApplicationActivationPolicy, NSRunningApplication,
+};
 use penrose::{
     Color, Error, Result, WinId,
+    core::conn::{Conn, ConnExt, manage_without_refresh},
     core::{
         Config, State, WindowManager,
         bindings::{KeyBindings, KeyCode, MouseBindings, MouseState},
-        conn::{Conn, ConnEvent, ConnExt, manage_without_refresh},
     },
     custom_error,
     pure::geometry::{Point, Rect},
@@ -41,40 +37,7 @@ use std::{
 };
 use tracing::{debug, error, info, trace, warn};
 
-const ROOT: WinId = WinId(0);
-
-macro_rules! win_mut {
-    ($self:ident, $id:expr) => {
-        match $self.windows.get_mut(&$id) {
-            Some(win) => Ok(win),
-            None => {
-                $self.update_known_apps_and_windows();
-                $self.windows.get_mut(&$id).ok_or(Error::UnknownClient($id))
-            }
-        }
-    };
-}
-
-macro_rules! app {
-    ($self:ident, $pid:expr) => {
-        match $self.apps.get(&$pid) {
-            Some(app) => Ok(app),
-            None => {
-                $self.update_known_apps_and_windows();
-                $self
-                    .apps
-                    .get(&$pid)
-                    .ok_or(custom_error!("unknown app pid {}", $pid))
-            }
-        }
-    };
-}
-
-impl ConnEvent for Event {
-    fn requires_pointer_warp(&self) -> bool {
-        true
-    }
-}
+static ROOT: WinId = WinId(0);
 
 #[derive(Debug)]
 pub struct OsxConn {
@@ -85,6 +48,7 @@ pub struct OsxConn {
 }
 
 impl OsxConn {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let (tx, rx) = channel();
         _ = EVENT_SENDER.set(tx);
@@ -109,52 +73,42 @@ impl OsxConn {
         mouse_bindings: MouseBindings<Self>,
         init: impl FnOnce(&mut WindowManager<Self>) -> Result<()> + Send + 'static,
     ) {
-        if !proc_is_ax_trusted() {
-            panic!("process is not trusted for the AX API");
-        }
-
+        check_ax_permissions_and_prompt();
         set_ax_timeout();
         self.set_hide_pt().unwrap();
 
-        let (_pool, app) = unsafe {
-            let pool = NSAutoreleasePool::new(nil);
-            let app = NSApp();
-            app.setActivationPolicy_(NSApplicationActivationPolicyRegular);
+        autoreleasepool(|_| unsafe {
+            let app = NSApp(MainThreadMarker::new().unwrap());
+            app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
-            (pool, app)
-        };
+            spawn(move || {
+                let mut wm =
+                    WindowManager::new(config, key_bindings, mouse_bindings, self).unwrap();
+                init(&mut wm).unwrap();
+                wm.run().unwrap();
+            });
 
-        spawn(move || {
-            let mut wm = WindowManager::new(config, key_bindings, mouse_bindings, self).unwrap();
-            init(&mut wm).unwrap();
-            wm.run().unwrap();
-        });
-
-        let global_observer = global_observer();
-        register_observers(global_observer);
-
-        unsafe {
+            let _global_observer = GlobalObserver::new();
             let current_app = NSRunningApplication::currentApplication();
-            current_app.activateWithOptions_(
-                NSApplicationActivationOptions_NSApplicationActivateIgnoringOtherApps,
-            );
-        }
+            current_app.activateWithOptions(NSApplicationActivationOptions::empty());
 
-        unsafe { app.run() };
+            app.run()
+        });
     }
 
     fn update_known_apps_and_windows(&mut self) {
-        let current_apps: HashMap<Pid, NSRunningApplication> = running_applications()
-            .into_iter()
-            .map(|app| (unsafe { app.processIdentifier() }, app))
-            .collect();
+        let current_apps: HashMap<Pid, Retained<NSRunningApplication>> =
+            OsxApp::running_applications()
+                .into_iter()
+                .map(|app| (unsafe { app.processIdentifier() }, app))
+                .collect();
 
         self.apps.retain(|k, _| current_apps.contains_key(k));
         for (pid, running_app) in current_apps.into_iter() {
-            if !self.apps.contains_key(&pid) {
-                if let Ok(app) = OsxApp::try_new(running_app) {
-                    self.apps.insert(pid, app);
-                }
+            if !self.apps.contains_key(&pid)
+                && let Ok(app) = OsxApp::try_new(running_app)
+            {
+                self.apps.insert(pid, app);
             }
         }
 
@@ -195,10 +149,7 @@ impl OsxConn {
         if !self.windows.contains_key(&id) {
             self.update_known_apps_and_windows();
         }
-        self.windows
-            .get(&id)
-            .map(|win| f(win))
-            .ok_or(Error::UnknownClient(id))
+        self.windows.get(&id).map(f).ok_or(Error::UnknownClient(id))
     }
 
     // More undocumented magic in the AX API...
@@ -209,16 +160,21 @@ impl OsxConn {
         id: WinId,
         f: impl Fn(&mut OsxWindow) -> Result<()>,
     ) -> Result<()> {
-        let win = win_mut!(self, id)?;
+        let win = match self.windows.get_mut(&id) {
+            Some(win) => win,
+            None => {
+                self.update_known_apps_and_windows();
+                self.windows.get_mut(&id).ok_or(Error::UnknownClient(id))?
+            }
+        };
+
         let app = self
             .apps
             .get_mut(&win.owner_pid)
             .ok_or(custom_error!("unknown app pid {}", win.owner_pid))?;
         let mut was_enabled = app.enhanced_user_interface_enabled();
-        if was_enabled {
-            if app.set_enhanced_user_interface(false).is_err() {
-                was_enabled = false; // avoid trying to reset
-            }
+        if was_enabled && app.set_enhanced_user_interface(false).is_err() {
+            was_enabled = false; // avoid trying to reset
         }
         let res = f(win);
         if was_enabled {
@@ -241,7 +197,16 @@ impl OsxConn {
     }
 
     fn focus_active_app_window(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
-        let axwin = match app!(self, pid)?.focused_ax_window() {
+        let app = match self.apps.get(&pid) {
+            Some(app) => app,
+            None => {
+                self.update_known_apps_and_windows();
+                self.apps
+                    .get(&pid)
+                    .ok_or(custom_error!("unknown app pid: {pid}"))?
+            }
+        };
+        let axwin = match app.focused_ax_window() {
             Ok(axwin) => axwin,
             Err(_) => return Ok(()), // if we can't find the window then skip
         };
@@ -280,7 +245,7 @@ impl OsxConn {
     }
 
     fn handle_new_window_for_pid(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
-        let old_ids: Vec<WinId> = self.windows.keys().map(|id| *id).collect();
+        let old_ids: Vec<WinId> = self.windows.keys().copied().collect();
         self.update_known_apps_and_windows();
         let new_windows: Vec<_> = self
             .windows
