@@ -50,7 +50,7 @@ pub fn check_ax_permissions_and_prompt() {
 
     info!("AXIsProcessTrusted=false: prompting for permissions");
     autoreleasepool(|_| {
-        // SAFETY: Arguements being constructed for AXIsProcessTrustedWithOptions are valid.
+        // SAFETY: Arguments being constructed for AXIsProcessTrustedWithOptions are valid.
         // See the extensive safety docs for the msg_send macro for more details here if this
         // ever needs updating.
         unsafe {

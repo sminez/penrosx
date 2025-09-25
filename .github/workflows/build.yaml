@@ -43,3 +43,10 @@ jobs:
 
     - name: Lint the codebase with clippy
       run: cargo clippy --all-targets --all-features --examples --tests
+
+  typos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check typos
+        uses: crate-ci/typos@v1.23.5
