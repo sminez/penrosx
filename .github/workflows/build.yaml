@@ -3,10 +3,10 @@ name: Build
 on:
   push:
     branches:
-      - main
+      - develop
   pull_request:
     branches:
-      - main
+      - develop
 
 env:
   CARGO_TERM_COLOR: always
@@ -36,7 +36,7 @@ jobs:
         components: rustfmt,clippy
 
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test
 
     - name: Ensure rustfmt is happy
       run: cargo fmt --all -- --check
