@@ -62,6 +62,11 @@ impl OsxApp {
         }
     }
 
+    // Debug includes the details for all of the attached observers and the AX UI element
+    pub fn string_details(&self) -> String {
+        format!("App(name={})", self.name)
+    }
+
     pub(crate) fn enhanced_user_interface_enabled(&self) -> bool {
         bool_attr(&self.axapp, "AXEnhancedUserInterface")
     }

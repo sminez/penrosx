@@ -12,7 +12,7 @@ use std::{
     process::exit,
     sync::{OnceLock, mpsc::Sender},
 };
-use tracing::info;
+use tracing::{info, trace};
 
 mod app;
 mod global_observer;
@@ -44,10 +44,11 @@ unsafe extern "C" {
 pub fn check_ax_permissions_and_prompt() {
     // SAFETY: FFI function is called without arguments
     if unsafe { AXIsProcessTrusted() } {
+        trace!("AXIsProcessTrusted=true");
         return;
     }
 
-    info!("AXIsProcessTrusted returned false: prompting for permissions");
+    info!("AXIsProcessTrusted=false: prompting for permissions");
     autoreleasepool(|_| {
         // SAFETY: Arguements being constructed for AXIsProcessTrustedWithOptions are valid.
         // See the extensive safety docs for the msg_send macro for more details here if this

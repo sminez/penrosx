@@ -100,6 +100,19 @@ impl OsxWindow {
         infos
     }
 
+    // Debug includes the details for all of the attached observers and the AX UI element
+    pub fn string_details(&self) -> String {
+        format!(
+            "Window(id={}, pid={}, owner={}, name={:?}, layer={}, bounds={:?})",
+            self.win_id,
+            self.owner_pid,
+            self.owner,
+            self.window_name,
+            self.window_layer,
+            self.bounds
+        )
+    }
+
     pub fn set_size(&self, w: f64, h: f64) -> Result<()> {
         let mut s = CGSize::new(w, h);
         set_attr!(&self.axwin, s, kAXValueTypeCGSize, kAXSizeAttribute)
