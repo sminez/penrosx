@@ -61,6 +61,40 @@ impl OsxConn {
         }
     }
 
+    /// A simple debugging helper to show what events are coming through when we're not running any
+    /// real event handling logic.
+    pub fn log_incoming_events(mut self, mtm: MainThreadMarker) {
+        check_ax_permissions_and_prompt();
+        set_ax_timeout();
+
+        autoreleasepool(|_| unsafe {
+            let app = NSApp(mtm);
+            app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
+
+            spawn(move || {
+                loop {
+                    let evt = self.rx.recv().unwrap();
+                    info!(?evt, "got event");
+                    self.update_known_apps_and_windows();
+                    info!(
+                        apps=?self.apps.values().map(|w|w.string_details()).collect::<Vec<_>>(),
+                        "known apps"
+                    );
+                    info!(
+                        windows=?self.windows.values().map(|w|w.string_details()).collect::<Vec<_>>(),
+                        "known windows"
+                    );
+                }
+            });
+
+            let _global_observer = GlobalObserver::new();
+            let current_app = NSRunningApplication::currentApplication();
+            current_app.activateWithOptions(NSApplicationActivationOptions::empty());
+
+            app.run()
+        });
+    }
+
     /// Get a copy of the sender required to inject events into the connection event stream
     pub fn event_tx(&self) -> Sender<Event> {
         EVENT_SENDER.get().unwrap().clone()
