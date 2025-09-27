@@ -1,15 +1,20 @@
 //! A handle to an OSX window.
 use crate::{
     Pid,
-    sys::{AXObserverWrapper, bool_attr},
-};
-use accessibility::{AXAttribute, AXUIElement, AXUIElementActions, AXUIElementAttributes};
-use accessibility_sys::{
-    AXError, AXUIElementCopyAttributeValue, AXUIElementPerformAction, AXUIElementRef,
-    AXUIElementSetAttributeValue, AXValueCreate, kAXCloseButtonAttribute, kAXErrorSuccess,
-    kAXMovedNotification, kAXPositionAttribute, kAXPressAction, kAXResizedNotification,
-    kAXSizeAttribute, kAXUIElementDestroyedNotification, kAXValueTypeCGPoint, kAXValueTypeCGSize,
-    kAXWindowDeminiaturizedNotification, kAXWindowMiniaturizedNotification,
+    sys::{
+        AXObserverWrapper,
+        ax::{
+            actions::AXUIElementActions,
+            attribute::{AXAttribute, AXUIElementAttributes},
+            error::AXError,
+            notification::{
+                AX_MOVED, AX_RESIZED, AX_UI_ELEMENT_DESTROYED, AX_WINDOW_DEMINIATURIZED,
+                AX_WINDOW_MINIATURIZED,
+            },
+            ui_element::{AXUIElement, AXUIElementRef},
+        },
+        bool_attr,
+    },
 };
 use core_foundation::{
     base::{TCFType, ToVoid},
@@ -29,31 +34,12 @@ use penrose::{Result, WinId, custom_error, pure::geometry::Rect};
 use std::ffi::c_void;
 use tracing::error;
 
-macro_rules! set_attr {
-    ($axwin:expr, $val:expr, $ty:expr, $name:expr) => {
-        unsafe {
-            let val = AXValueCreate($ty, &mut $val as *mut _ as *mut c_void);
-            let err = AXUIElementSetAttributeValue(
-                $axwin.as_concrete_TypeRef(),
-                CFString::new($name).as_concrete_TypeRef(),
-                val as _,
-            );
-
-            if err == kAXErrorSuccess {
-                Ok(())
-            } else {
-                Err(custom_error!("unable to set {} attr: {}", $name, err))
-            }
-        }
-    };
-}
-
 pub(crate) static WIN_NOTIFICATIONS: [&str; 5] = [
-    kAXUIElementDestroyedNotification,
-    kAXWindowDeminiaturizedNotification,
-    kAXWindowMiniaturizedNotification,
-    kAXMovedNotification,
-    kAXResizedNotification,
+    AX_UI_ELEMENT_DESTROYED,
+    AX_WINDOW_DEMINIATURIZED,
+    AX_WINDOW_MINIATURIZED,
+    AX_MOVED,
+    AX_RESIZED,
 ];
 
 /// A handle to a running OSX window
@@ -114,42 +100,20 @@ impl OsxWindow {
     }
 
     pub fn set_size(&self, w: f64, h: f64) -> Result<()> {
-        let mut s = CGSize::new(w, h);
-        set_attr!(&self.axwin, s, kAXValueTypeCGSize, kAXSizeAttribute)
+        self.axwin.set_size(CGSize::new(w, h))
     }
 
     pub fn set_pos(&self, x: f64, y: f64) -> Result<()> {
-        let mut p = CGPoint::new(x, y);
-        set_attr!(&self.axwin, p, kAXValueTypeCGPoint, kAXPositionAttribute)
+        self.axwin.set_position(CGPoint::new(x, y))
     }
 
     pub fn raise(&self) -> Result<()> {
-        self.axwin
-            .set_main(true)
-            .map_err(|e| custom_error!("unable to set main attr for window: {}", e))?;
-        self.axwin
-            .raise()
-            .map_err(|e| custom_error!("unable to raise window: {}", e))
+        self.axwin.set_main(true)?;
+        self.axwin.raise()
     }
 
     pub fn close(&self) -> Result<()> {
-        unsafe {
-            let button = std::ptr::null_mut();
-            AXUIElementCopyAttributeValue(
-                self.axwin.as_concrete_TypeRef(),
-                CFString::new(kAXCloseButtonAttribute).as_concrete_TypeRef(),
-                button,
-            );
-            if button.is_null() {
-                return Err(custom_error!("unable to get close button"));
-            }
-            AXUIElementPerformAction(
-                button as _,
-                CFString::new(kAXPressAction).as_concrete_TypeRef(),
-            );
-        }
-
-        Ok(())
+        self.axwin.close_button()?.press()
     }
 
     pub fn is_fullscreen(&self) -> bool {
@@ -245,7 +209,7 @@ pub(crate) fn get_axwindow(pid: i32, winid: u32) -> Option<AXUIElement> {
     for ax_window in attr.get_all_values().into_iter() {
         unsafe {
             let mut id: CGWindowID = 0;
-            if _AXUIElementGetWindow(ax_window as AXUIElementRef, &mut id) == kAXErrorSuccess
+            if _AXUIElementGetWindow(ax_window as AXUIElementRef, &mut id).is_success()
                 && id == winid
             {
                 return Some(AXUIElement::wrap_under_get_rule(

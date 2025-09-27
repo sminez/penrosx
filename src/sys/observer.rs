@@ -1,10 +1,18 @@
-use crate::{event::Event, sys::EVENT_SENDER};
-use accessibility_sys::{
-    AXObserverAddNotification, AXObserverCreate, AXObserverGetRunLoopSource, AXObserverRef,
-    AXObserverRemoveNotification, AXUIElementRef, kAXErrorSuccess,
-    kAXFocusedWindowChangedNotification, kAXMovedNotification, kAXResizedNotification,
-    kAXUIElementDestroyedNotification, kAXWindowCreatedNotification,
-    kAXWindowDeminiaturizedNotification, kAXWindowMiniaturizedNotification,
+use crate::{
+    event::Event,
+    sys::{
+        EVENT_SENDER,
+        ax::{
+            notification::{
+                AX_FOCUSED_WINDOW_CHANGED, AX_MOVED, AX_RESIZED, AX_UI_ELEMENT_DESTROYED,
+                AX_WINDOW_CREATED, AX_WINDOW_DEMINIATURIZED, AX_WINDOW_MINIATURIZED,
+            },
+            ui_element::{
+                AXObserverAddNotification, AXObserverCreate, AXObserverGetRunLoopSource,
+                AXObserverRef, AXObserverRemoveNotification, AXUIElementRef,
+            },
+        },
+    },
 };
 use core_foundation::{
     base::TCFType,
@@ -45,13 +53,13 @@ impl AXObserverWrapper {
         unsafe {
             let mut obs = std::ptr::null_mut();
             let err = AXObserverCreate(pid, ax_observer_callback, &mut obs as *mut _);
-            if err != kAXErrorSuccess {
+            if err.is_err() {
                 return Err(custom_error!("unable to create ax observer: {}", err));
             }
             CFRetain(obs as *const _);
             let notif = CFString::new(notif);
             let err = AXObserverAddNotification(obs, ax, notif.as_concrete_TypeRef(), data);
-            if err != kAXErrorSuccess {
+            if err.is_err() {
                 return Err(custom_error!(
                     "unable to add notification to ax observer: {}",
                     err
@@ -80,21 +88,21 @@ unsafe extern "C" fn ax_observer_callback(
 
     #[allow(non_upper_case_globals, reason = "accessibility_sys crate")]
     let evt = match notif.as_str() {
-        kAXWindowCreatedNotification => Event::WindowCreated { pid: p.addr() as _ },
-        kAXFocusedWindowChangedNotification => Event::FocusedWindowChanged { pid: p.addr() as _ },
-        kAXUIElementDestroyedNotification => Event::UiElementDestroyed {
+        AX_WINDOW_CREATED => Event::WindowCreated { pid: p.addr() as _ },
+        AX_FOCUSED_WINDOW_CHANGED => Event::FocusedWindowChanged { pid: p.addr() as _ },
+        AX_UI_ELEMENT_DESTROYED => Event::UiElementDestroyed {
             id: (p.addr() as u32).into(),
         },
-        kAXWindowDeminiaturizedNotification => Event::WindowDeminiturized {
+        AX_WINDOW_DEMINIATURIZED => Event::WindowDeminiturized {
             id: (p.addr() as u32).into(),
         },
-        kAXWindowMiniaturizedNotification => Event::WindowMiniturized {
+        AX_WINDOW_MINIATURIZED => Event::WindowMiniturized {
             id: (p.addr() as u32).into(),
         },
-        kAXMovedNotification => Event::WindowMoved {
+        AX_MOVED => Event::WindowMoved {
             id: (p.addr() as u32).into(),
         },
-        kAXResizedNotification => Event::WindowResized {
+        AX_RESIZED => Event::WindowResized {
             id: (p.addr() as u32).into(),
         },
 

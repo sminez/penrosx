@@ -15,10 +15,6 @@ extend-ignore-re = [
 
 # Match Identifier - Case Sensitive
 [default.extend-identifiers]
-Bck = "Bck"
-Fwd = "Fwd"
-integratED = "integratED"
-integratING = "integratING"
 
 # Match Inside a Word - Case Insensitive
 [default.extend-words]

@@ -3,11 +3,10 @@ use crate::{
     Pid,
     event::Event,
     sys::{
-        EVENT_SENDER, GlobalObserver, OsxApp, OsxWindow, check_ax_permissions_and_prompt,
-        set_ax_timeout,
+        EVENT_SENDER, GlobalObserver, OsxApp, OsxWindow, ax::ui_element::AXUIElement,
+        check_ax_permissions_and_prompt, set_ax_timeout,
     },
 };
-use accessibility::AXUIElement;
 use core_graphics::{
     display::{CGDisplay, CGPoint},
     event::CGEvent,

@@ -1,20 +1,29 @@
-use crate::event::Event;
-use accessibility::{AXAttribute, AXUIElement};
-use accessibility_sys::{
-    AXUIElementCreateSystemWide, AXUIElementSetAttributeValue, AXUIElementSetMessagingTimeout,
-    kAXErrorSuccess,
+use crate::{
+    event::Event,
+    sys::ax::{
+        attribute::AXAttribute,
+        ui_element::{
+            AXIsProcessTrusted, AXIsProcessTrustedWithOptions, AXUIElement,
+            AXUIElementCreateSystemWide, AXUIElementSetAttributeValue,
+            AXUIElementSetMessagingTimeout, kAXTrustedCheckOptionPrompt,
+        },
+    },
 };
-use core_foundation::{base::TCFType, boolean::CFBoolean, string::CFString};
+use core_foundation::{
+    base::TCFType,
+    boolean::{CFBoolean, kCFBooleanTrue},
+    string::CFString,
+};
 use objc2::{class, msg_send, rc::autoreleasepool, runtime::AnyObject};
 use penrose::{Result, custom_error};
 use std::{
-    ffi::c_void,
     process::exit,
     sync::{OnceLock, mpsc::Sender},
 };
 use tracing::{info, trace};
 
 mod app;
+pub(crate) mod ax;
 mod global_observer;
 mod observer;
 mod win;
@@ -25,19 +34,6 @@ pub(crate) use observer::AXObserverWrapper;
 pub(crate) use win::OsxWindow;
 
 pub(crate) static EVENT_SENDER: OnceLock<Sender<Event>> = OnceLock::new();
-
-#[link(name = "ApplicationServices", kind = "framework")]
-unsafe extern "C" {
-    fn AXIsProcessTrusted() -> bool;
-    fn AXIsProcessTrustedWithOptions(options: *const c_void) -> bool;
-
-    static kAXTrustedCheckOptionPrompt: *const c_void;
-}
-
-#[link(name = "CoreFoundation", kind = "framework")]
-unsafe extern "C" {
-    static kCFBooleanTrue: *const c_void;
-}
 
 /// Check to see if we have been granted access to the accessibility APIs and if not, prompt the
 /// user to grant access before exiting.
@@ -96,7 +92,7 @@ fn set_bool_attr(elem: &AXUIElement, attr: &str, val: bool) -> Result<()> {
             val.as_concrete_TypeRef() as _,
         );
 
-        if err == kAXErrorSuccess {
+        if err.is_success() {
             Ok(())
         } else {
             Err(custom_error!("unable to set {} attr: {}", attr, err))

@@ -22,5 +22,7 @@ pub mod conn;
 pub mod event;
 pub mod sys;
 
+pub use sys::ax::{actions::AXUIElementActions, attribute::AXUIElementAttributes, error::AXError};
+
 /// An application process ID.
 pub type Pid = i32;

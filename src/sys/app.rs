@@ -1,8 +1,12 @@
 //! A handle to an OSX application.
-use crate::sys::{AXObserverWrapper, bool_attr, set_bool_attr};
-use accessibility::{attribute::AXAttribute, ui_element::AXUIElement};
-use accessibility_sys::{
-    AXUIElementCreateApplication, kAXFocusedWindowChangedNotification, kAXWindowCreatedNotification,
+use crate::sys::{
+    AXObserverWrapper,
+    ax::{
+        attribute::AXAttribute,
+        notification::{AX_FOCUSED_WINDOW_CHANGED, AX_WINDOW_CREATED},
+        ui_element::{AXUIElement, AXUIElementCreateApplication},
+    },
+    bool_attr, set_bool_attr,
 };
 use core_foundation::base::TCFType;
 use objc2::rc::Retained;
@@ -13,10 +17,7 @@ use objc2_app_kit::{
 use penrose::{Result, custom_error};
 use std::ffi::c_void;
 
-static APP_NOTIFICATIONS: [&str; 2] = [
-    kAXWindowCreatedNotification,
-    kAXFocusedWindowChangedNotification,
-];
+static APP_NOTIFICATIONS: [&str; 2] = [AX_WINDOW_CREATED, AX_FOCUSED_WINDOW_CHANGED];
 
 #[derive(Debug)]
 pub struct OsxApp {
