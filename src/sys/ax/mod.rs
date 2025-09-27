@@ -11,6 +11,7 @@ pub mod actions;
 pub mod attribute;
 pub mod error;
 pub mod notification;
+pub mod observer;
 pub mod ui_element;
 pub mod value;
 

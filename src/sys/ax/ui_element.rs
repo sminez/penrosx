@@ -11,9 +11,9 @@ use core_foundation::{
 use core_foundation_sys::{
     array::CFArrayRef,
     base::{CFTypeID, CFTypeRef},
-    runloop::CFRunLoopSourceRef,
     string::CFStringRef,
 };
+use core_graphics::window::CGWindowID;
 use objc2_app_kit::NSRunningApplication;
 use objc2_foundation::NSString;
 use penrose::{Result, custom_error};
@@ -27,9 +27,22 @@ use std::{
 pub enum __AXUIElement {}
 pub type AXUIElementRef = *mut __AXUIElement;
 
-#[derive(Debug)]
-pub enum __AXObserver {}
-pub type AXObserverRef = *mut __AXObserver;
+// /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk/System/Library/Frameworks/AppKit.framework/Versions/C/Headers
+// Private API that makes everything possible for mapping between the Accessibility API and
+// CoreGraphics
+unsafe extern "C" {
+    pub fn _AXUIElementGetWindow(element: AXUIElementRef, out: *mut CGWindowID) -> AXError;
+}
+
+pub fn try_get_window_id(elem: AXUIElementRef) -> Result<u32> {
+    let mut id = 0;
+    let res = unsafe { _AXUIElementGetWindow(elem, &mut id) };
+    if res.is_err() {
+        return Err(custom_error!("unable to fetch window ID: {}", res));
+    }
+
+    Ok(id)
+}
 
 #[link(name = "ApplicationServices", kind = "framework")]
 unsafe extern "C" {
@@ -65,31 +78,7 @@ unsafe extern "C" {
         element: AXUIElementRef,
         timeoutInSeconds: f32,
     ) -> AXError;
-    pub fn AXObserverCreate(
-        application: Pid,
-        callback: AXObserverCallback,
-        outObserver: *mut AXObserverRef,
-    ) -> AXError;
-    pub fn AXObserverAddNotification(
-        observer: AXObserverRef,
-        element: AXUIElementRef,
-        notification: CFStringRef,
-        refcon: *mut c_void,
-    ) -> AXError;
-    pub fn AXObserverRemoveNotification(
-        observer: AXObserverRef,
-        element: AXUIElementRef,
-        notification: CFStringRef,
-    ) -> AXError;
-    pub fn AXObserverGetRunLoopSource(observer: AXObserverRef) -> CFRunLoopSourceRef;
 }
-
-pub type AXObserverCallback = unsafe extern "C" fn(
-    observer: AXObserverRef,
-    element: AXUIElementRef,
-    notification: CFStringRef,
-    refcon: *mut c_void,
-);
 
 declare_TCFType!(AXUIElement, AXUIElementRef);
 impl_TCFType!(AXUIElement, AXUIElementRef, AXUIElementGetTypeID);
@@ -227,5 +216,9 @@ impl AXUIElement {
         unsafe { ax_call_void(|| AXUIElementSetMessagingTimeout(self.0, timeout))? };
 
         Ok(())
+    }
+
+    pub fn try_get_window_id(&self) -> Result<u32> {
+        try_get_window_id(self.as_concrete_TypeRef())
     }
 }

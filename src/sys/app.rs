@@ -1,21 +1,23 @@
 //! A handle to an OSX application.
-use crate::sys::{
-    AXObserverWrapper,
-    ax::{
-        attribute::AXAttribute,
-        notification::{AX_FOCUSED_WINDOW_CHANGED, AX_WINDOW_CREATED},
-        ui_element::{AXUIElement, AXUIElementCreateApplication},
+use crate::{
+    event::Event,
+    sys::{
+        EVENT_SENDER,
+        ax::{
+            attribute::{AXAttribute, AXUIElementAttributes},
+            notification::{AX_FOCUSED_WINDOW_CHANGED, AX_WINDOW_CREATED},
+            observer::Observer,
+            ui_element::AXUIElement,
+        },
     },
-    bool_attr, set_bool_attr,
 };
-use core_foundation::base::TCFType;
 use objc2::rc::Retained;
 use objc2_app_kit::{
     NSApplicationActivationOptions, NSApplicationActivationPolicy, NSRunningApplication,
     NSWorkspace,
 };
 use penrose::{Result, custom_error};
-use std::ffi::c_void;
+use tracing::{error, trace};
 
 static APP_NOTIFICATIONS: [&str; 2] = [AX_WINDOW_CREATED, AX_FOCUSED_WINDOW_CHANGED];
 
@@ -24,7 +26,7 @@ pub struct OsxApp {
     pub(crate) name: String,
     pub(crate) app: Retained<NSRunningApplication>,
     // observers needs to be before axapp so we drop in the correct order
-    pub(crate) _observers: Vec<AXObserverWrapper>,
+    pub(crate) _observer: Observer,
     pub(crate) axapp: AXUIElement,
 }
 
@@ -46,19 +48,32 @@ impl OsxApp {
         unsafe {
             let pid = app.processIdentifier();
             let name = app.localizedName().unwrap_or_default().to_string();
-            let axapp = AXUIElementCreateApplication(pid);
-            // disgusting
-            let pid_ptr: *mut c_void = std::ptr::without_provenance_mut(pid as usize);
-            let observers = APP_NOTIFICATIONS
-                .into_iter()
-                .map(|s| AXObserverWrapper::try_new(pid, s, axapp, pid_ptr))
-                .collect::<Result<Vec<_>>>()?;
+            let axapp = AXUIElement::application(pid);
+
+            let observer = Observer::try_new(pid, move |notif| {
+                let evt = match notif {
+                    AX_WINDOW_CREATED => Event::WindowCreated { pid },
+                    AX_FOCUSED_WINDOW_CHANGED => Event::FocusedWindowChanged { pid },
+
+                    s => {
+                        error!("dropping unknown app notification: {s}");
+                        return;
+                    }
+                };
+
+                trace!(?evt, "ax observer notification received");
+                _ = EVENT_SENDER.wait().send(evt);
+            })?;
+
+            for notif in APP_NOTIFICATIONS.iter() {
+                observer.add_notification(&axapp, notif)?
+            }
 
             Ok(Self {
                 name,
                 app,
-                axapp: AXUIElement::wrap_under_get_rule(axapp),
-                _observers: observers,
+                axapp,
+                _observer: observer,
             })
         }
     }
@@ -69,11 +84,14 @@ impl OsxApp {
     }
 
     pub(crate) fn enhanced_user_interface_enabled(&self) -> bool {
-        bool_attr(&self.axapp, "AXEnhancedUserInterface")
+        self.axapp
+            .enhanced_user_interface()
+            .map(|val| val.into())
+            .unwrap_or(false)
     }
 
     pub(crate) fn set_enhanced_user_interface(&self, on: bool) -> Result<()> {
-        set_bool_attr(&self.axapp, "AXEnhancedUserInterface", on)
+        self.axapp.set_enhanced_user_interface(on)
     }
 
     pub fn activate(&self) {

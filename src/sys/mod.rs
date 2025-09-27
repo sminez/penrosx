@@ -1,21 +1,12 @@
 use crate::{
     event::Event,
-    sys::ax::{
-        attribute::AXAttribute,
-        ui_element::{
-            AXIsProcessTrusted, AXIsProcessTrustedWithOptions, AXUIElement,
-            AXUIElementCreateSystemWide, AXUIElementSetAttributeValue,
-            AXUIElementSetMessagingTimeout, kAXTrustedCheckOptionPrompt,
-        },
+    sys::ax::ui_element::{
+        AXIsProcessTrusted, AXIsProcessTrustedWithOptions, AXUIElementCreateSystemWide,
+        AXUIElementSetMessagingTimeout, kAXTrustedCheckOptionPrompt,
     },
 };
-use core_foundation::{
-    base::TCFType,
-    boolean::{CFBoolean, kCFBooleanTrue},
-    string::CFString,
-};
+use core_foundation::boolean::kCFBooleanTrue;
 use objc2::{class, msg_send, rc::autoreleasepool, runtime::AnyObject};
-use penrose::{Result, custom_error};
 use std::{
     process::exit,
     sync::{OnceLock, mpsc::Sender},
@@ -25,12 +16,10 @@ use tracing::{info, trace};
 mod app;
 pub(crate) mod ax;
 mod global_observer;
-mod observer;
 mod win;
 
 pub(crate) use app::OsxApp;
 pub(crate) use global_observer::GlobalObserver;
-pub(crate) use observer::AXObserverWrapper;
 pub(crate) use win::OsxWindow;
 
 pub(crate) static EVENT_SENDER: OnceLock<Sender<Event>> = OnceLock::new();
@@ -69,33 +58,4 @@ pub fn check_ax_permissions_and_prompt() {
 pub fn set_ax_timeout() {
     // SAFETY: args to AXUIElementSetMessagingTimeout are valid
     unsafe { AXUIElementSetMessagingTimeout(AXUIElementCreateSystemWide(), 1.0) };
-}
-
-fn bool_attr(elem: &AXUIElement, attr: &str) -> bool {
-    match elem.attribute(&AXAttribute::new(&CFString::new(attr))) {
-        Ok(attr) => attr.downcast::<CFBoolean>() == Some(CFBoolean::true_value()),
-        Err(_) => false,
-    }
-}
-
-fn set_bool_attr(elem: &AXUIElement, attr: &str, val: bool) -> Result<()> {
-    let val = if val {
-        CFBoolean::true_value()
-    } else {
-        CFBoolean::false_value()
-    };
-
-    unsafe {
-        let err = AXUIElementSetAttributeValue(
-            elem.as_concrete_TypeRef(),
-            CFString::new("AXEnhancedUserInterface").as_concrete_TypeRef(),
-            val.as_concrete_TypeRef() as _,
-        );
-
-        if err.is_success() {
-            Ok(())
-        } else {
-            Err(custom_error!("unable to set {} attr: {}", attr, err))
-        }
-    }
 }

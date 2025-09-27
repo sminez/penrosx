@@ -13,10 +13,12 @@ pub const AX_CONTENTS: &str = "AXContents";
 pub const AX_DESCRIPTION: &str = "AXDescription";
 pub const AX_ELEMENT_BUSY: &str = "AXElementBusy";
 pub const AX_ENABLED: &str = "AXEnabled";
+pub const AX_ENHANCED_USER_INTERFACE: &str = "AXEnhancedUserInterface";
 pub const AX_FOCUSED_WINDOW: &str = "AXFocusedWindow";
 pub const AX_FOCUSED: &str = "AXFocused";
 pub const AX_FRAME: &str = "AXFrame";
 pub const AX_FRONTMOST: &str = "AXFrontmost";
+pub const AX_FULL_SCREEN: &str = "AXFullScreen";
 pub const AX_HELP: &str = "AXHelp";
 pub const AX_IDENTIFIER: &str = "AXIdentifier";
 pub const AX_LABEL_VALUE: &str = "AXLabelValue";
@@ -129,10 +131,12 @@ define_attributes! {
     (description, CFString, AX_DESCRIPTION),
     (element_busy, CFBoolean, AX_ELEMENT_BUSY),
     (enabled, CFBoolean, AX_ENABLED),
+    (enhanced_user_interface, CFBoolean, AX_ENHANCED_USER_INTERFACE, set_enhanced_user_interface),
     (focused_window, AXUIElement, AX_FOCUSED_WINDOW),
     (focused, CFBoolean, AX_FOCUSED),
     (frame, AXValue<CGRect>, AX_FRAME),
     (frontmost, CFBoolean, AX_FRONTMOST, set_frontmost),
+    (fullscreen, CFBoolean, AX_FULL_SCREEN, set_fullscreen),
     (help, CFString, AX_HELP),
     (identifier, CFString, AX_IDENTIFIER),
     (label_value, CFString, AX_LABEL_VALUE),
