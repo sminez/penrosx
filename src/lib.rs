@@ -18,10 +18,12 @@
 
 pub use objc2::MainThreadMarker;
 
+pub mod bindings;
 pub mod conn;
 pub mod event;
 pub mod sys;
 
+pub use bindings::try_parse_key_bindings;
 pub use sys::ax::{actions::AXUIElementActions, attribute::AXUIElementAttributes, error::AXError};
 
 /// An application process ID.

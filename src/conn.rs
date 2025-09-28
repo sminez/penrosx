@@ -1,6 +1,7 @@
 //! The [Conn] implementation itself.
 use crate::{
     Pid,
+    bindings::{HotKey, KeyListener},
     event::Event,
     sys::{
         EVENT_SENDER, GlobalObserver, OsxApp, OsxWindow, ax::ui_element::AXUIElement,
@@ -24,7 +25,7 @@ use penrose::{
     core::conn::{Conn, ConnExt, manage_without_refresh},
     core::{
         Config, State, WindowManager,
-        bindings::{KeyBindings, KeyCode, MouseBindings, MouseState},
+        bindings::{KeyBindings, MouseBindings, MouseState},
     },
     custom_error,
     pure::geometry::{Point, Rect},
@@ -43,21 +44,22 @@ pub struct OsxConn {
     apps: HashMap<Pid, OsxApp>,
     windows: HashMap<WinId, OsxWindow>,
     hide_pt: Point,
+    key_listener: KeyListener,
     rx: Receiver<Event>,
 }
 
 impl OsxConn {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn try_new() -> Result<Self> {
         let (tx, rx) = channel();
         _ = EVENT_SENDER.set(tx);
 
-        Self {
+        Ok(Self {
             apps: Default::default(),
             windows: Default::default(),
             hide_pt: Default::default(),
+            key_listener: KeyListener::try_new()?,
             rx,
-        }
+        })
     }
 
     /// A simple debugging helper to show what events are coming through when we're not running any
@@ -330,7 +332,7 @@ impl OsxConn {
 
     fn handle_keypress(
         &mut self,
-        key: KeyCode,
+        key: HotKey,
         bindings: &mut KeyBindings<Self>,
         state: &mut State<Self>,
     ) -> Result<()> {
@@ -349,6 +351,7 @@ impl OsxConn {
 impl Conn for OsxConn {
     type Event = Event;
     type State = ();
+    type KeyBindingKey = HotKey;
 
     fn initial_state(&mut self) -> Self::State {}
 
@@ -391,8 +394,12 @@ impl Conn for OsxConn {
 
     fn flush(&mut self) {}
 
-    fn grab(&mut self, _key_codes: &[KeyCode], _mouse_states: &[MouseState]) -> Result<()> {
-        // TODO: actually grab keys and mouse states
+    fn grab(&mut self, keys: &[HotKey], _mouse_states: &[MouseState]) -> Result<()> {
+        info!(n=%keys.len(), "grabbing keys");
+        for k in keys {
+            self.key_listener.register(k)?;
+        }
+
         Ok(())
     }
 

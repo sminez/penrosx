@@ -1,9 +1,6 @@
 //! Connection events
-use crate::Pid;
-use penrose::{
-    WinId,
-    core::{bindings::KeyCode, conn::ConnEvent},
-};
+use crate::{Pid, bindings::HotKey};
+use penrose::{WinId, core::conn::ConnEvent};
 use std::fmt;
 
 /// An OSX event that can be processed by Penrose
@@ -25,7 +22,7 @@ pub enum Event {
     WindowMoved { id: WinId },
     WindowResized { id: WinId },
     // Bindings
-    KeyPress { k: KeyCode },
+    KeyPress { k: HotKey },
 }
 
 impl ConnEvent for Event {
