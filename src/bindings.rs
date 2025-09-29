@@ -220,6 +220,8 @@ impl TryFrom<&str> for HotKey {
     }
 }
 
+/// Attempt to parse key bindings defined using string [HotKey] syntax into valid [KeyBindings] for
+/// an [OsxConn].
 pub fn try_parse_key_bindings(
     raw: HashMap<impl AsRef<str>, Box<dyn KeyEventHandler<OsxConn>>>,
 ) -> Result<KeyBindings<OsxConn>> {

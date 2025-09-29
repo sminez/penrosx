@@ -1,6 +1,4 @@
 //! This is the initial demo of the Conn impl from this crate working in a minimal way.
-//! There is still a lot to sort out and keybindings need to be handled internally rather than
-//! pulling in the global_hotkey crate but it's a start.
 use anyhow::Context;
 use penrose::{
     builtin::{

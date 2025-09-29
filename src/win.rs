@@ -126,8 +126,8 @@ impl OsxWindow {
         let observer = Observer::try_new(owner_pid, move |notif| {
             let evt = match notif {
                 AX_UI_ELEMENT_DESTROYED => Event::UiElementDestroyed { id },
-                AX_WINDOW_DEMINIATURIZED => Event::WindowDeminiturized { id },
-                AX_WINDOW_MINIATURIZED => Event::WindowMiniturized { id },
+                AX_WINDOW_DEMINIATURIZED => Event::WindowDeminiaturized { id },
+                AX_WINDOW_MINIATURIZED => Event::WindowMiniaturized { id },
                 AX_MOVED => Event::WindowMoved { id },
                 AX_RESIZED => Event::WindowResized { id },
 

@@ -107,6 +107,7 @@ macro_rules! define_attributes {
             $(constructor!($($args)*);)*
         }
 
+        #[allow(missing_docs)]
         pub trait AXUIElementAttributes {
             $(accessor!(@decl $($args)*);)*
         }

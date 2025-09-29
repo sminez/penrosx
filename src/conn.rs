@@ -41,6 +41,7 @@ use tracing::{debug, error, info, trace, warn};
 
 static ROOT: WinId = WinId(0);
 
+/// A penrose [Conn] implementation for use in OSX.
 #[derive(Debug)]
 pub struct OsxConn {
     apps: HashMap<Pid, OsxApp>,
@@ -48,9 +49,14 @@ pub struct OsxConn {
     hide_pt: Point,
     key_listener: KeyListener,
     rx: Receiver<Event>,
+    called_from_init_and_run: bool,
 }
 
 impl OsxConn {
+    /// Attempt to create a new [OsxConn], initializing the global events channel and hotkey
+    /// listening backend.
+    ///
+    /// This method can fail if initializing the hotkey listening backend fails.
     pub fn try_new() -> Result<Self> {
         let (tx, rx) = channel();
         _ = EVENT_SENDER.set(tx);
@@ -61,6 +67,7 @@ impl OsxConn {
             hide_pt: Default::default(),
             key_listener: KeyListener::try_new()?,
             rx,
+            called_from_init_and_run: false,
         })
     }
 
@@ -103,6 +110,11 @@ impl OsxConn {
         EVENT_SENDER.get().unwrap().clone()
     }
 
+    /// Activate as an OSX application and register our global event listener before starting the
+    /// penrose [WindowManager] event loop.
+    ///
+    /// You _must_ call this method to initialize your window manager when using this [Conn]
+    /// implementation to ensure platform requirements in OSX are upheld.
     pub fn init_wm_and_run(
         mut self,
         mtm: MainThreadMarker,
@@ -111,6 +123,7 @@ impl OsxConn {
         mouse_bindings: MouseBindings<Self>,
         init: impl FnOnce(&mut WindowManager<Self>) -> Result<()> + Send + 'static,
     ) {
+        self.called_from_init_and_run = true;
         check_ax_permissions_and_prompt();
         set_ax_timeout();
         self.set_hide_pt().unwrap();
@@ -355,7 +368,13 @@ impl Conn for OsxConn {
     type State = ();
     type KeyBindingKey = HotKey;
 
-    fn initial_state(&mut self) -> Self::State {}
+    fn initial_state(&mut self) -> Self::State {
+        if !self.called_from_init_and_run {
+            panic!(
+                "When using OsxConn you must initialise your window manager by calling OsxConn::init_and_run"
+            );
+        }
+    }
 
     fn root(&mut self) -> WinId {
         ROOT
@@ -384,8 +403,8 @@ impl Conn for OsxConn {
             AppUnhidden { pid } => self.handle_app_unhidden(pid, state),
             UiElementDestroyed { id } => self.clear_closed_window_state(id, state),
             WindowCreated { pid } => self.handle_new_window_for_pid(pid, state),
-            WindowDeminiturized { id } => self.handle_window_deminiturized(id, state),
-            WindowMiniturized { id } => self.handle_window_miniturized(id, state),
+            WindowDeminiaturized { id } => self.handle_window_deminiturized(id, state),
+            WindowMiniaturized { id } => self.handle_window_miniturized(id, state),
             WindowMoved { id } | WindowResized { id } => self.handle_window_position(id, state),
 
             KeyPress { k } => self.handle_keypress(k, key_bindings, state),

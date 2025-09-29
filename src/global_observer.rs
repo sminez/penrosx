@@ -1,3 +1,8 @@
+//! Global observer for picking up notifications around application lifecycle events.
+//!
+//! [OsxApp][crate::app::OsxApp] and [OsxWindow][crate::win::OsxWindow] register their own
+//! observers for notifications relating to individual apps / windows respectively. All events are
+//! mapped into internal [Event]s for processing in the main window manager event loop.
 use crate::event::{EVENT_SENDER, Event};
 use objc2::{AnyThread, ClassType, define_class, msg_send, rc::Retained, sel};
 use objc2_app_kit::{

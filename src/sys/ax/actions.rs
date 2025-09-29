@@ -14,6 +14,7 @@ pub const AX_SHOW_MENU: &str = "AXShowMenu";
 
 macro_rules! define_actions {
     ($(($name:ident, $const:ident)),*,) => {
+        #[allow(missing_docs)]
         pub trait AXUIElementActions {
             $(fn $name(&self) -> Result<()>;)*
         }
