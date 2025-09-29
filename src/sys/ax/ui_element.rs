@@ -1,6 +1,6 @@
-use crate::{
+use crate::sys::{
     Pid,
-    sys::ax::{attribute::AXAttribute, ax_call, ax_call_void, error::AXError},
+    ax::{attribute::AXAttribute, ax_call, ax_call_void, error::AXError},
 };
 use core_foundation::{
     array::CFArray,

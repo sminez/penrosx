@@ -1,12 +1,14 @@
 //! The [Conn] implementation itself.
 use crate::{
-    Pid,
+    app::OsxApp,
     bindings::{HotKey, KeyListener},
-    event::Event,
+    event::{EVENT_SENDER, Event},
+    global_observer::GlobalObserver,
     sys::{
-        EVENT_SENDER, GlobalObserver, OsxApp, OsxWindow, ax::ui_element::AXUIElement,
-        check_ax_permissions_and_prompt, set_ax_timeout,
+        Pid,
+        ax::{check_ax_permissions_and_prompt, set_ax_timeout, ui_element::AXUIElement},
     },
+    win::OsxWindow,
 };
 use core_graphics::{
     display::{CGDisplay, CGPoint},

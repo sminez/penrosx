@@ -1,6 +1,6 @@
-use crate::{
+use crate::sys::{
     Pid,
-    sys::ax::{
+    ax::{
         error::AXError,
         ui_element::{AXUIElement, AXUIElementRef},
     },

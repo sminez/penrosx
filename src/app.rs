@@ -1,14 +1,11 @@
 //! A handle to an OSX application.
 use crate::{
-    event::Event,
-    sys::{
-        EVENT_SENDER,
-        ax::{
-            attribute::{AXAttribute, AXUIElementAttributes},
-            notification::{AX_FOCUSED_WINDOW_CHANGED, AX_WINDOW_CREATED},
-            observer::Observer,
-            ui_element::AXUIElement,
-        },
+    event::{EVENT_SENDER, Event},
+    sys::ax::{
+        attribute::{AXAttribute, AXUIElementAttributes},
+        notification::{AX_FOCUSED_WINDOW_CHANGED, AX_WINDOW_CREATED},
+        observer::Observer,
+        ui_element::AXUIElement,
     },
 };
 use objc2::rc::Retained;

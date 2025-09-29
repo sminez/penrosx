@@ -15,16 +15,17 @@
     html_logo_url = "https://raw.githubusercontent.com/sminez/penrose/develop/icon.svg",
     issue_tracker_base_url = "https://github.com/sminez/penrosx/issues/"
 )]
-
 pub use objc2::MainThreadMarker;
 
-pub mod bindings;
-pub mod conn;
-pub mod event;
-pub mod sys;
+mod app;
+mod bindings;
+mod conn;
+mod event;
+mod global_observer;
+mod sys;
+mod win;
 
 pub use bindings::try_parse_key_bindings;
+pub use conn::OsxConn;
+pub use event::Event;
 pub use sys::ax::{actions::AXUIElementActions, attribute::AXUIElementAttributes, error::AXError};
-
-/// An application process ID.
-pub type Pid = i32;

@@ -1,4 +1,4 @@
-use crate::{event::Event, sys::EVENT_SENDER};
+use crate::event::{EVENT_SENDER, Event};
 use objc2::{AnyThread, ClassType, define_class, msg_send, rc::Retained, sel};
 use objc2_app_kit::{
     NSRunningApplication, NSWorkspace, NSWorkspaceApplicationKey,

@@ -1,9 +1,8 @@
 //! A handle to an OSX window.
 use crate::{
-    Pid,
-    event::Event,
+    event::{EVENT_SENDER, Event},
     sys::{
-        EVENT_SENDER,
+        Pid,
         ax::{
             actions::AXUIElementActions,
             attribute::AXUIElementAttributes,

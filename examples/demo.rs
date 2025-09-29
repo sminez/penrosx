@@ -14,7 +14,7 @@ use penrose::{
     core::{Config, bindings::KeyBindings, layout::LayoutStack},
     map, stack,
 };
-use penrosx::{MainThreadMarker, conn::OsxConn, try_parse_key_bindings};
+use penrosx::{MainThreadMarker, OsxConn, try_parse_key_bindings};
 use std::{collections::HashMap, io::stdout};
 use tracing::subscriber::set_global_default;
 use tracing_subscriber::FmtSubscriber;

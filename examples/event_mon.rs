@@ -1,5 +1,5 @@
 use anyhow::Context;
-use penrosx::{MainThreadMarker, conn::OsxConn};
+use penrosx::{MainThreadMarker, OsxConn};
 use std::io::stdout;
 use tracing::subscriber::set_global_default;
 use tracing_subscriber::FmtSubscriber;

@@ -1,7 +1,12 @@
 //! Connection events
-use crate::{Pid, bindings::HotKey};
+use crate::{bindings::HotKey, sys::Pid};
 use penrose::{WinId, core::conn::ConnEvent};
-use std::fmt;
+use std::{
+    fmt,
+    sync::{OnceLock, mpsc::Sender},
+};
+
+pub(crate) static EVENT_SENDER: OnceLock<Sender<Event>> = OnceLock::new();
 
 /// An OSX event that can be processed by Penrose
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
