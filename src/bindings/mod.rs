@@ -23,7 +23,7 @@ use std::{
     mem::{size_of, zeroed},
     ptr::null_mut,
 };
-use tracing::warn;
+use tracing::{debug, warn};
 
 mod carbon;
 
@@ -80,17 +80,9 @@ impl KeyListener {
         })
     }
 
-    pub fn register_bindings(&mut self, keys: &[HotKey]) -> Result<()> {
-        for k in keys {
-            self.register(k)?;
-        }
-
-        Ok(())
-    }
-
     // Register a new hotkey and return its ID.
     pub(crate) fn register(&mut self, k: &HotKey) -> Result<u32> {
-        tracing::debug!(?k, "registering hotkey");
+        debug!(?k, "registering hotkey");
         let scan_code = k.try_scancode()?;
         let mod_mask = k.mod_mask();
         let id = k.id();

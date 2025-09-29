@@ -9,37 +9,21 @@ pub const EVENT_PARAM_DIRECT_OBJECT: c_uint = 757935405;
 pub const EVENT_HOT_KEY_ID: c_uint = 1751869796;
 pub const EVENT_CLASS_KEYBOARD: c_uint = 1801812322;
 
-#[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct OpaqueEventRef {
-    _unused: [u8; 0],
-}
+pub enum __EventRef {}
+pub type EventRef = *mut __EventRef;
 
-pub type EventRef = *mut OpaqueEventRef;
-
-#[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct OpaqueEventHandlerRef {
-    _unused: [u8; 0],
-}
+pub enum __EventHandlerRef {}
+pub type EventHandlerRef = *mut __EventHandlerRef;
 
-pub type EventHandlerRef = *mut OpaqueEventHandlerRef;
-
-#[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct OpaqueEventHandlerCallRef {
-    _unused: [u8; 0],
-}
+pub enum __EventHandlerCallRef {}
+pub type EventHandlerCallRef = *mut __EventHandlerCallRef;
 
-pub type EventHandlerCallRef = *mut OpaqueEventHandlerCallRef;
-
-#[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct OpaqueEventTargetRef {
-    _unused: [u8; 0],
-}
-
-pub type EventTargetRef = *mut OpaqueEventTargetRef;
+pub enum __EventTargetRef {}
+pub type EventTargetRef = *mut __EventTargetRef;
 
 pub type EventHandlerFn = unsafe extern "C" fn(
     handler_call_ref: EventHandlerCallRef,
@@ -47,13 +31,9 @@ pub type EventHandlerFn = unsafe extern "C" fn(
     user_data: *mut c_void,
 ) -> c_int;
 
-#[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct OpaqueEventHotKeyRef {
-    _unused: [u8; 0],
-}
-
-pub type EventHotKeyRef = *mut OpaqueEventHotKeyRef;
+pub enum __EventHotKeyRef {}
+pub type EventHotKeyRef = *mut __EventHotKeyRef;
 
 #[repr(C, packed(2))]
 #[derive(Debug, Copy, Clone)]
