@@ -26,7 +26,7 @@ mod global_observer;
 mod sys;
 mod win;
 
-pub use bindings::try_parse_key_bindings;
+pub use bindings::{HotKey, try_parse_key_bindings};
 pub use conn::OsxConn;
 pub use event::Event;
 pub use sys::ax::{actions::AXUIElementActions, attribute::AXUIElementAttributes, error::AXError};

@@ -154,9 +154,12 @@ unsafe extern "C" fn event_handler(
     NO_ERR
 }
 
+/// A hotkey combination that can be attached to a user defined key binding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct HotKey {
+    /// The modifiers being held
     pub mods: Modifiers,
+    /// The key code being pressed
     pub key: Code,
 }
 

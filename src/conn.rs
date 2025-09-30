@@ -67,7 +67,7 @@ pub struct OsxConn {
     hide_pt: Point,
     /// a handle to the hotkey listener used to receive hotkey events
     key_listener: KeyListener,
-    /// channel of events comming from the observers we register
+    /// channel of events coming from the observers we register
     rx: Receiver<Event>,
     /// flag to ensure that we are correctly initialized using init_and_run rather than simply
     /// passing this Conn to a WindowManager for running. (OSX requires that the main app thread is
@@ -96,9 +96,16 @@ impl OsxConn {
         })
     }
 
-    /// A simple debugging helper to show what events are coming through when we're not running any
-    /// real event handling logic.
-    pub fn log_incoming_events(mut self, mtm: MainThreadMarker) {
+    /// Run this connection independently of a penrose [WindowManager] with a custom event handling
+    /// function.
+    ///
+    /// This will not be able to implement all of the behaviour needed for implementing a window
+    /// manager but it can be useful for debugging and development purposes.
+    pub fn run_with_event_handler(
+        mut self,
+        mtm: MainThreadMarker,
+        mut handler: impl FnMut(Event, &mut Self) + Send + 'static,
+    ) {
         check_ax_permissions_and_prompt();
         set_ax_timeout();
 
@@ -107,21 +114,9 @@ impl OsxConn {
             app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
             spawn(move || {
-                let screens = self.screen_details();
-                info!(?screens, "screen details");
-
                 loop {
                     let evt = self.rx.recv().unwrap();
-                    info!(?evt, "got event");
-                    self.update_known_apps_and_windows();
-                    info!(
-                        apps=?self.apps.values().map(|w|w.string_details()).collect::<Vec<_>>(),
-                        "known apps"
-                    );
-                    info!(
-                        windows=?self.windows.values().map(|w|w.string_details()).collect::<Vec<_>>(),
-                        "known windows"
-                    );
+                    (handler)(evt, &mut self);
                 }
             });
 
@@ -136,6 +131,16 @@ impl OsxConn {
     /// Get a copy of the sender required to inject events into the connection event stream
     pub fn event_tx(&self) -> Sender<Event> {
         EVENT_SENDER.get().unwrap().clone()
+    }
+
+    /// The currently known applications running on the system
+    pub fn apps(&self) -> &HashMap<Pid, OsxApp> {
+        &self.apps
+    }
+
+    /// The currently known application windows on the system
+    pub fn windows(&self) -> &HashMap<WinId, OsxWindow> {
+        &self.windows
     }
 
     /// Activate as an OSX application and register our global event listener before starting the
@@ -175,7 +180,8 @@ impl OsxConn {
         });
     }
 
-    fn update_known_apps_and_windows(&mut self) {
+    /// Refresh internal state for all running applications and windows on the system.
+    pub fn update_known_apps_and_windows(&mut self) {
         let current_apps: HashMap<Pid, Retained<NSRunningApplication>> =
             OsxApp::running_applications()
                 .into_iter()
