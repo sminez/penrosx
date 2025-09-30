@@ -22,7 +22,7 @@ static APP_NOTIFICATIONS: [&str; 2] = [AX_WINDOW_CREATED, AX_FOCUSED_WINDOW_CHAN
 pub struct OsxApp {
     pub(crate) name: String,
     pub(crate) app: Retained<NSRunningApplication>,
-    // observers needs to be before axapp so we drop in the correct order
+    // needs to be before axapp so we drop in the correct order
     pub(crate) _observer: Observer,
     pub(crate) axapp: AXUIElement,
 }

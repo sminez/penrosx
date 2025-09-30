@@ -145,7 +145,7 @@ define_attributes! {
     (main, CFBoolean, AX_MAIN, set_main),
     (max_value, CFType, AX_MAX_VALUE),
     (min_value, CFType, AX_MIN_VALUE),
-    (minimized, CFBoolean, AX_MINIMIZED),
+    (minimized, CFBoolean, AX_MINIMIZED, set_minimized),
     (parent, AXUIElement, AX_PARENT),
     (placeholder_value, CFString, AX_PLACEHOLDER_VALUE),
     (position, AXValue<CGPoint>, AX_POSITION, set_position),

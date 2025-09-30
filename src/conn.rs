@@ -24,16 +24,16 @@ use objc2_app_kit::{
 };
 use penrose::{
     Color, Error, Result, WinId,
-    core::conn::{Conn, ConnExt, manage_without_refresh},
     core::{
         Config, State, WindowManager,
         bindings::{KeyBindings, MouseBindings, MouseState},
+        conn::{Conn, ConnExt, manage_without_refresh},
     },
     custom_error,
     pure::geometry::{Point, Rect},
 };
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::mpsc::{Receiver, Sender, channel},
     thread::spawn,
 };
@@ -41,14 +41,37 @@ use tracing::{debug, error, info, trace, warn};
 
 static ROOT: WinId = WinId(0);
 
+macro_rules! app_wins {
+    ($self:ident, $pid:expr) => {
+        $self
+            .windows
+            .iter()
+            .filter(|(_, win)| win.owner_pid == $pid)
+            .map(|(id, _)| *id)
+    };
+}
+
 /// A penrose [Conn] implementation for use in OSX.
 #[derive(Debug)]
 pub struct OsxConn {
+    /// known apps currently running
     apps: HashMap<Pid, OsxApp>,
+    /// apps that are hidden and have had their windows removed from state
+    hidden_apps: HashSet<Pid>,
+    /// known open application windows
     windows: HashMap<WinId, OsxWindow>,
+    /// windows that have been miniaturized and removed from state, mapped to the workspace they
+    /// were on for if/when they are deminiaturized
+    miniaturized_windows: HashMap<WinId, String>,
+    /// a point in the bottom corner of one of the screens that we can hide windows at
     hide_pt: Point,
+    /// a handle to the hotkey listener used to receive hotkey events
     key_listener: KeyListener,
+    /// channel of events comming from the observers we register
     rx: Receiver<Event>,
+    /// flag to ensure that we are correctly initialized using init_and_run rather than simply
+    /// passing this Conn to a WindowManager for running. (OSX requires that the main app thread is
+    /// running the NSApplication rather than our event loop)
     called_from_init_and_run: bool,
 }
 
@@ -63,7 +86,9 @@ impl OsxConn {
 
         Ok(Self {
             apps: Default::default(),
+            hidden_apps: Default::default(),
             windows: Default::default(),
+            miniaturized_windows: Default::default(),
             hide_pt: Default::default(),
             key_listener: KeyListener::try_new()?,
             rx,
@@ -82,6 +107,9 @@ impl OsxConn {
             app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
             spawn(move || {
+                let screens = self.screen_details();
+                info!(?screens, "screen details");
+
                 loop {
                     let evt = self.rx.recv().unwrap();
                     info!(?evt, "got event");
@@ -236,6 +264,7 @@ impl OsxConn {
         res
     }
 
+    #[tracing::instrument(skip(self, state))]
     fn manage_new_windows(&mut self, state: &mut State<Self>) -> Result<()> {
         let ids: Vec<_> = self.windows.values().map(|win| win.win_id).collect();
 
@@ -248,6 +277,7 @@ impl OsxConn {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, state))]
     fn focus_active_app_window(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
         let app = match self.apps.get(&pid) {
             Some(app) => app,
@@ -274,6 +304,7 @@ impl OsxConn {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, state))]
     fn clear_terminated_app_state(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
         self.apps.remove(&pid);
         let ids: Vec<_> = self
@@ -296,6 +327,7 @@ impl OsxConn {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, state))]
     fn handle_new_window_for_pid(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
         let old_ids: Vec<WinId> = self.windows.keys().copied().collect();
         self.update_known_apps_and_windows();
@@ -320,31 +352,101 @@ impl OsxConn {
         self.modify_and_refresh(state, |cs| cs.focus_client(&focus))
     }
 
-    fn handle_app_hidden(&mut self, _pid: Pid, _state: &mut State<Self>) -> Result<()> {
-        Ok(())
+    #[tracing::instrument(skip(self, state))]
+    fn handle_app_hidden(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
+        if !self.apps.contains_key(&pid) {
+            warn!("unknown app hidden");
+            return Ok(());
+        }
+
+        debug!("stashing hidden app windows");
+        let cs = &mut state.client_set;
+        self.hidden_apps.insert(pid);
+
+        for id in app_wins!(self, pid) {
+            trace!(%id, "stashing app window");
+            let tag = cs.tag_for_client(&id).unwrap_or(cs.current_tag());
+            self.miniaturized_windows.insert(id, tag.to_string());
+            cs.remove_client(&id);
+        }
+
+        self.refresh(state)
     }
 
-    fn handle_app_unhidden(&mut self, _pid: Pid, _state: &mut State<Self>) -> Result<()> {
-        Ok(())
+    #[tracing::instrument(skip(self, state))]
+    fn handle_app_unhidden(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
+        if !self.apps.contains_key(&pid) {
+            warn!("unknown app unhidden");
+            return Ok(());
+        } else if !self.hidden_apps.contains(&pid) {
+            warn!("app unhidden but it wasn't previously tracked as hidden");
+        }
+
+        debug!("unstashing hidden app windows");
+        let cs = &mut state.client_set;
+        self.hidden_apps.remove(&pid);
+
+        for (id, tag) in self.miniaturized_windows.drain() {
+            trace!(%id, "replacing app window");
+            let ws = match cs.workspace_mut(&tag) {
+                Some(ws) => ws,
+                None => cs.current_workspace_mut(),
+            };
+            ws.insert_as_focus(id);
+        }
+
+        self.refresh(state)
     }
 
+    #[tracing::instrument(skip(self, state))]
     fn clear_closed_window_state(&mut self, id: WinId, state: &mut State<Self>) -> Result<()> {
         self.windows.remove(&id);
         self.unmanage(id, state)
     }
 
+    #[tracing::instrument(skip(self, _state))]
     fn handle_window_position(&mut self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
         Ok(())
     }
 
-    fn handle_window_miniturized(&mut self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
-        Ok(())
+    #[tracing::instrument(skip(self, state))]
+    fn handle_window_miniturized(&mut self, id: WinId, state: &mut State<Self>) -> Result<()> {
+        if !self.windows.contains_key(&id) {
+            warn!("unknown window miniaturized");
+            return Ok(());
+        }
+
+        trace!("stashing window");
+        let cs = &mut state.client_set;
+        let tag = cs.tag_for_client(&id).unwrap_or(cs.current_tag());
+        self.miniaturized_windows.insert(id, tag.to_string());
+        cs.remove_client(&id);
+
+        self.refresh(state)
     }
 
-    fn handle_window_deminiturized(&mut self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
-        Ok(())
+    #[tracing::instrument(skip(self, state))]
+    fn handle_window_deminiturized(&mut self, id: WinId, state: &mut State<Self>) -> Result<()> {
+        if !self.windows.contains_key(&id) {
+            warn!("unknown window deminiaturized");
+            return Ok(());
+        }
+
+        trace!("unstashing window");
+        let cs = &mut state.client_set;
+        if let Some(tag) = self.miniaturized_windows.remove(&id) {
+            trace!(%id, "replacing app window");
+            let ws = match cs.workspace_mut(&tag) {
+                Some(ws) => ws,
+                None => cs.current_workspace_mut(),
+            };
+            ws.insert_as_focus(id);
+        }
+
+        self.refresh(state)
     }
 
+    #[tracing::instrument(skip(self, bindings, state))]
     fn handle_keypress(
         &mut self,
         key: HotKey,
