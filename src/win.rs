@@ -217,7 +217,7 @@ pub fn make_key_window(pid: Pid, id: WinId) -> Result<()> {
     let user_generated: u32 = 512;
 
     // the information specified in the events below consists of the "special" category, event type, and modifiers,
-    // basically synthesizing a mouse-down and up event targetted at a specific window of the application,
+    // basically synthesizing a mouse-down and up event targeted at a specific window of the application,
     // but it doesn't actually get treated as a mouse-click normally would.
     let mut event1 = [0; 256];
     event1[4] = 248;

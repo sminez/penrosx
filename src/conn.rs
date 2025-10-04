@@ -7,6 +7,7 @@ use crate::{
     sys::{
         Pid,
         ax::{check_ax_permissions_and_prompt, set_ax_timeout, ui_element::AXUIElement},
+        current_screen_rects,
     },
     win::OsxWindow,
 };
@@ -39,7 +40,8 @@ use std::{
 };
 use tracing::{debug, error, info, trace, warn};
 
-static ROOT: WinId = WinId(0);
+/// The root window ID
+pub static ROOT: WinId = WinId(0);
 
 macro_rules! app_wins {
     ($self:ident, $pid:expr) => {
@@ -65,6 +67,8 @@ pub struct OsxConn {
     miniaturized_windows: HashMap<WinId, String>,
     /// a point in the bottom corner of one of the screens that we can hide windows at
     hide_pt: Point,
+    /// cached screen dimensions
+    screen_rects: Vec<Rect>,
     /// a handle to the hotkey listener used to receive hotkey events
     key_listener: KeyListener,
     /// channel of events coming from the observers we register
@@ -80,7 +84,7 @@ impl OsxConn {
     /// listening backend.
     ///
     /// This method can fail if initializing the hotkey listening backend fails.
-    pub fn try_new() -> Result<Self> {
+    pub fn try_new(mtm: MainThreadMarker) -> Result<Self> {
         let (tx, rx) = channel();
         _ = EVENT_SENDER.set(tx);
 
@@ -90,6 +94,7 @@ impl OsxConn {
             windows: Default::default(),
             miniaturized_windows: Default::default(),
             hide_pt: Default::default(),
+            screen_rects: current_screen_rects(mtm),
             key_listener: KeyListener::try_new()?,
             rx,
             called_from_init_and_run: false,
@@ -120,7 +125,7 @@ impl OsxConn {
                 }
             });
 
-            let _global_observer = GlobalObserver::new();
+            let _global_observer = GlobalObserver::new(mtm);
             let current_app = NSRunningApplication::currentApplication();
             current_app.activateWithOptions(NSApplicationActivationOptions::empty());
 
@@ -172,7 +177,7 @@ impl OsxConn {
                 wm.run().unwrap();
             });
 
-            let _global_observer = GlobalObserver::new();
+            let _global_observer = GlobalObserver::new(mtm);
             let current_app = NSRunningApplication::currentApplication();
             current_app.activateWithOptions(NSApplicationActivationOptions::empty());
 
@@ -469,6 +474,18 @@ impl OsxConn {
 
         Ok(())
     }
+
+    #[tracing::instrument(skip(self, state))]
+    fn handle_screens_changed(
+        &mut self,
+        screen_rects: Vec<Rect>,
+        state: &mut State<Self>,
+    ) -> Result<()> {
+        self.screen_rects = screen_rects.clone();
+        state.client_set.update_screens(screen_rects)?;
+
+        self.refresh(state)
+    }
 }
 
 impl Conn for OsxConn {
@@ -517,6 +534,8 @@ impl Conn for OsxConn {
 
             KeyPress { k } => self.handle_keypress(k, key_bindings, state),
 
+            ScreensChanged { screen_rects } => self.handle_screens_changed(screen_rects, state),
+
             AppDeactivated { .. } => Ok(()),
         }
     }
@@ -533,23 +552,7 @@ impl Conn for OsxConn {
     }
 
     fn screen_details(&mut self) -> Result<Vec<Rect>> {
-        let mut displays: Vec<_> = CGDisplay::active_displays()
-            .map_err(|e| custom_error!("error reading cg displays: {}", e))?
-            .into_iter()
-            .map(|id| {
-                let r = CGDisplay::new(id).bounds();
-                Rect::new(
-                    r.origin.x as i32,
-                    r.origin.y as i32,
-                    r.size.width as u32,
-                    r.size.height as u32,
-                )
-            })
-            .collect();
-
-        displays.sort_by_key(|r| r.x);
-
-        Ok(displays)
+        Ok(self.screen_rects.clone())
     }
 
     fn cursor_position(&mut self) -> Result<Point> {
@@ -634,12 +637,8 @@ impl Conn for OsxConn {
                 self.windows.get(&id).ok_or(Error::UnknownClient(id))?
             }
         };
-        let app = self.apps.get(&win.owner_pid).unwrap();
 
-        win.raise()?;
-        app.activate();
-
-        Ok(())
+        win.focus()
     }
 
     fn client_geometry(&mut self, id: WinId) -> Result<Rect> {

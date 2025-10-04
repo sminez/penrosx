@@ -1,6 +1,6 @@
 //! Connection events
 use crate::{bindings::HotKey, sys::Pid};
-use penrose::{WinId, core::conn::ConnEvent};
+use penrose::{WinId, core::conn::ConnEvent, pure::geometry::Rect};
 use std::{
     fmt,
     sync::{OnceLock, mpsc::Sender},
@@ -11,6 +11,12 @@ pub(crate) static EVENT_SENDER: OnceLock<Sender<Event>> = OnceLock::new();
 /// An OSX event that can be processed by Penrose
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Event {
+    /// The screen dimensions have changed
+    ScreensChanged {
+        /// The new screen dimensions
+        screen_rects: Vec<Rect>,
+    },
+
     /// The given application is now active
     AppActivated {
         /// The application pid
@@ -87,7 +93,7 @@ pub enum Event {
 
 impl ConnEvent for Event {
     fn requires_pointer_warp(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -109,6 +115,7 @@ impl fmt::Display for Event {
             WindowMoved { .. } => write!(f, "WindowMoved"),
             WindowResized { .. } => write!(f, "WindowResized"),
             KeyPress { .. } => write!(f, "KeyPress"),
+            ScreensChanged { .. } => write!(f, "ScreensChanged"),
         }
     }
 }

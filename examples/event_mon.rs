@@ -12,8 +12,8 @@ fn main() -> anyhow::Result<()> {
     let subscriber = builder.finish();
     set_global_default(subscriber).context("unable to set a global tracing subscriber")?;
 
-    let conn = OsxConn::try_new()?;
     let mtm = MainThreadMarker::new().unwrap();
+    let conn = OsxConn::try_new(mtm)?;
     conn.run_with_event_handler(mtm, |evt, conn| {
         info!(?evt, "got event");
         conn.update_known_apps_and_windows();

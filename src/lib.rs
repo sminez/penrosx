@@ -27,6 +27,6 @@ mod sys;
 mod win;
 
 pub use bindings::{HotKey, try_parse_key_bindings};
-pub use conn::OsxConn;
+pub use conn::{OsxConn, ROOT};
 pub use event::Event;
 pub use sys::ax::{actions::AXUIElementActions, attribute::AXUIElementAttributes, error::AXError};

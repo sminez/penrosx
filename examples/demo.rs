@@ -29,8 +29,8 @@ fn main() -> anyhow::Result<()> {
         ..Config::default()
     };
 
-    let conn = OsxConn::try_new()?;
     let mtm = MainThreadMarker::new().unwrap();
+    let conn = OsxConn::try_new(mtm)?;
     conn.init_wm_and_run(mtm, config, key_bindings()?, HashMap::default(), |_| Ok(()));
 
     Ok(())

@@ -144,9 +144,9 @@ checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 
 [[package]]
 name = "keyboard-types"
-version = "0.8.1"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53cea01d04c8251f945a9f16c5364da6cdb8bce69a61382663302c62f4186d13"
+checksum = "0fbe853b403ae61a04233030ae8a79d94975281ed9770a1f9e246732b534b28d"
 dependencies = [
  "bitflags",
  "serde",
@@ -356,7 +356,7 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 [[package]]
 name = "penrose"
 version = "0.4.0"
-source = "git+https://github.com/sminez/penrose.git#72dae28aae66fc66685603e4ae5884da5705e5dc"
+source = "git+https://github.com/sminez/penrose.git#f29520bce94849c06daaf1db7f0d24ffbe25ffa7"
 dependencies = [
  "anymap",
  "bitflags",
