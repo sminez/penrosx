@@ -97,7 +97,8 @@ impl OsxWindow {
         self.axwin.set_position(CGPoint::new(x, y))
     }
 
-    pub fn raise(&self) -> Result<()> {
+    pub fn focus(&self) -> Result<()> {
+        make_key_window(self.owner_pid, self.win_id)?;
         self.axwin.set_main(true)?;
         self.axwin.raise()
     }
@@ -201,4 +202,73 @@ fn get_axwindow(pid: i32, winid: u32) -> Option<AXUIElement> {
     }
 
     None
+}
+
+macro_rules! check {
+    ($exp:expr) => {
+        if $exp != 0 {
+            return Err(custom_error!("Skylight error {err}"));
+        }
+    };
+}
+
+// See https://github.com/Hammerspoon/hammerspoon/issues/370#issuecomment-545545468.
+pub fn make_key_window(pid: Pid, id: WinId) -> Result<()> {
+    let user_generated: u32 = 512;
+
+    // the information specified in the events below consists of the "special" category, event type, and modifiers,
+    // basically synthesizing a mouse-down and up event targetted at a specific window of the application,
+    // but it doesn't actually get treated as a mouse-click normally would.
+    let mut event1 = [0; 256];
+    event1[4] = 248;
+    event1[8] = 1; // mouse down
+    event1[58] = 16;
+    event1[60..64].copy_from_slice(&id.to_le_bytes());
+    event1[32..48].fill(255);
+
+    let mut event2 = event1;
+    event2[8] = 2; // mouse up
+
+    let psn = Psn::for_pid(pid)?;
+
+    unsafe {
+        // focus the process and tell it which window should get key-focus
+        check!(_SLPSSetFrontProcessWithOptions(&psn, id.0, user_generated));
+        // synthesize click events to have the process update the key-window internally
+        check!(SLPSPostEventRecordTo(&psn, event1.as_ptr()));
+        check!(SLPSPostEventRecordTo(&psn, event2.as_ptr()));
+    }
+
+    Ok(())
+}
+
+#[link(name = "SkyLight", kind = "framework")]
+unsafe extern "C" {
+    fn _SLPSSetFrontProcessWithOptions(psn: *const Psn, wid: u32, mode: u32) -> i32;
+    fn SLPSPostEventRecordTo(psn: *const Psn, bytes: *const u8) -> i32;
+}
+
+#[link(name = "ApplicationServices", kind = "framework")]
+unsafe extern "C" {
+    // Deprecated in macOS 10.9?
+    fn GetProcessForPID(pid: Pid, psn: *mut Psn) -> i32;
+}
+
+// PSN: Process Serial Number
+#[repr(C)]
+#[derive(Default)]
+struct Psn {
+    high: u32,
+    low: u32,
+}
+
+impl Psn {
+    fn for_pid(pid: Pid) -> Result<Self> {
+        let mut psn = Psn::default();
+        if unsafe { GetProcessForPID(pid, &mut psn) } == 0 {
+            Ok(psn)
+        } else {
+            Err(custom_error!("unable to find PSN"))
+        }
+    }
 }
