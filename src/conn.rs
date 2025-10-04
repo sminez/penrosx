@@ -296,7 +296,7 @@ impl OsxConn {
                 self.update_known_apps_and_windows();
                 self.apps
                     .get(&pid)
-                    .ok_or(custom_error!("unknown app pid: {pid}"))?
+                    .ok_or(custom_error!("unknown app pid: {}", pid))?
             }
         };
         let axwin = match app.focused_ax_window() {
