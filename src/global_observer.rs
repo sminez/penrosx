@@ -143,7 +143,7 @@ impl GlobalObserverInner {
         &self,
         notif: &NSNotification,
     ) -> Option<Retained<NSRunningApplication>> {
-        let user_info = match unsafe { notif.userInfo() } {
+        let user_info = match notif.userInfo() {
             Some(info) => info,
             None => {
                 warn!(?notif, "received notification without user info");

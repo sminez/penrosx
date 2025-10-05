@@ -32,47 +32,43 @@ unsafe impl Sync for OsxApp {}
 
 impl OsxApp {
     pub(crate) fn running_applications() -> Vec<Retained<NSRunningApplication>> {
-        unsafe {
-            NSWorkspace::sharedWorkspace()
-                .runningApplications()
-                .into_iter()
-                .filter(|app| app.activationPolicy() == NSApplicationActivationPolicy::Regular)
-                .collect()
-        }
+        NSWorkspace::sharedWorkspace()
+            .runningApplications()
+            .into_iter()
+            .filter(|app| app.activationPolicy() == NSApplicationActivationPolicy::Regular)
+            .collect()
     }
 
     pub fn try_new(app: Retained<NSRunningApplication>) -> Result<Self> {
-        unsafe {
-            let pid = app.processIdentifier();
-            let name = app.localizedName().unwrap_or_default().to_string();
-            let axapp = AXUIElement::application(pid);
+        let pid = app.processIdentifier();
+        let name = app.localizedName().unwrap_or_default().to_string();
+        let axapp = AXUIElement::application(pid);
 
-            let observer = Observer::try_new(pid, move |notif| {
-                let evt = match notif {
-                    AX_WINDOW_CREATED => Event::WindowCreated { pid },
-                    AX_FOCUSED_WINDOW_CHANGED => Event::FocusedWindowChanged { pid },
+        let observer = Observer::try_new(pid, move |notif| {
+            let evt = match notif {
+                AX_WINDOW_CREATED => Event::WindowCreated { pid },
+                AX_FOCUSED_WINDOW_CHANGED => Event::FocusedWindowChanged { pid },
 
-                    s => {
-                        error!("dropping unknown app notification: {s}");
-                        return;
-                    }
-                };
+                s => {
+                    error!("dropping unknown app notification: {s}");
+                    return;
+                }
+            };
 
-                trace!(?evt, "ax observer notification received");
-                _ = EVENT_SENDER.wait().send(evt);
-            })?;
+            trace!(?evt, "ax observer notification received");
+            _ = EVENT_SENDER.wait().send(evt);
+        })?;
 
-            for notif in APP_NOTIFICATIONS.iter() {
-                observer.add_notification(&axapp, notif)?
-            }
-
-            Ok(Self {
-                name,
-                app,
-                axapp,
-                _observer: observer,
-            })
+        for notif in APP_NOTIFICATIONS.iter() {
+            observer.add_notification(&axapp, notif)?
         }
+
+        Ok(Self {
+            name,
+            app,
+            axapp,
+            _observer: observer,
+        })
     }
 
     // Debug includes the details for all of the attached observers and the AX UI element
@@ -96,10 +92,8 @@ impl OsxApp {
     }
 
     pub fn activate(&self) {
-        unsafe {
-            self.app
-                .activateWithOptions(NSApplicationActivationOptions::empty());
-        }
+        self.app
+            .activateWithOptions(NSApplicationActivationOptions::empty());
     }
 
     pub(crate) fn focused_ax_window(&self) -> Result<AXUIElement> {

@@ -114,7 +114,7 @@ impl OsxConn {
         check_ax_permissions_and_prompt();
         set_ax_timeout();
 
-        autoreleasepool(|_| unsafe {
+        autoreleasepool(|_| {
             let app = NSApp(mtm);
             app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
@@ -189,7 +189,7 @@ impl OsxConn {
         set_ax_timeout();
         self.set_hide_pt().unwrap();
 
-        autoreleasepool(|_| unsafe {
+        autoreleasepool(|_| {
             let app = NSApp(mtm);
             app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
@@ -213,7 +213,7 @@ impl OsxConn {
         let current_apps: HashMap<Pid, Retained<NSRunningApplication>> =
             OsxApp::running_applications()
                 .into_iter()
-                .map(|app| (unsafe { app.processIdentifier() }, app))
+                .map(|app| (app.processIdentifier(), app))
                 .collect();
 
         self.apps.retain(|k, _| current_apps.contains_key(k));
