@@ -80,6 +80,10 @@ impl OsxApp {
         format!("App(name={})", self.name)
     }
 
+    pub fn axui_elem(&self) -> &AXUIElement {
+        &self.axapp
+    }
+
     pub(crate) fn enhanced_user_interface_enabled(&self) -> bool {
         self.axapp
             .enhanced_user_interface()

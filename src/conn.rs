@@ -148,6 +148,29 @@ impl OsxConn {
         &self.windows
     }
 
+    /// Lookup a known application by pid
+    pub fn app(&self, pid: Pid) -> Result<&OsxApp> {
+        self.apps
+            .get(&pid)
+            .ok_or(custom_error!("unknown application: {}", pid))
+    }
+
+    /// Lookup a known window by ID
+    pub fn window(&self, id: WinId) -> Result<&OsxWindow> {
+        self.windows.get(&id).ok_or(Error::UnknownClient(id))
+    }
+
+    /// Lookup a the application for a known window by ID
+    pub fn app_for_window(&self, id: WinId) -> Result<&OsxApp> {
+        let pid = self
+            .windows
+            .get(&id)
+            .ok_or(Error::UnknownClient(id))?
+            .owner_pid;
+
+        self.app(pid)
+    }
+
     /// Activate as an OSX application and register our global event listener before starting the
     /// penrose [WindowManager] event loop.
     ///

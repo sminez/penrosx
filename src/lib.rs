@@ -23,6 +23,7 @@ mod bindings;
 mod conn;
 mod event;
 mod global_observer;
+pub mod query;
 mod sys;
 mod win;
 

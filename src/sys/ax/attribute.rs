@@ -54,6 +54,12 @@ impl<T> AXAttribute<T> {
     }
 }
 
+impl AXAttribute<CFType> {
+    pub fn new(name: &CFString) -> Self {
+        AXAttribute(name.to_owned(), PhantomData)
+    }
+}
+
 macro_rules! constructor {
     ($name:ident, $ty:ty, $const:ident $(,$setter:ident)?) => {
         pub fn $name() -> AXAttribute<$ty> {
@@ -62,42 +68,33 @@ macro_rules! constructor {
     };
 }
 
-macro_rules! accessor {
-    (@decl $name:ident, AXValue<$ty:ty>, $const:ident, $setter:ident) => {
-        accessor!(@decl $name, AXValue<$ty>, $const);
-        fn $setter(&self, value: impl Into<$ty>) -> Result<()>;
-    };
-    (@decl $name:ident, $ty:ty, $const:ident, $setter:ident) => {
-        accessor!(@decl $name, $ty, $const);
-        fn $setter(&self, value: impl Into<$ty>) -> Result<()>;
-    };
-    (@decl $name:ident, AXValue<$ty:ty>, $const:ident) => {
+macro_rules! define_elem_attr_method {
+    ($name:ident, AXValue<$ty:ty>, $const:ident $(, $setter:ident)?) => {
         fn $name(&self) -> Result<$ty>;
+        $(fn $setter(&self, value: impl Into<$ty>) -> Result<()>;)?
     };
-    (@decl $name:ident, $ty:ty, $const:ident) => {
+    ($name:ident, $ty:ty, $const:ident $(, $setter:ident)?) => {
         fn $name(&self) -> Result<$ty>;
+        $(fn $setter(&self, value: impl Into<$ty>) -> Result<()>;)?
     };
-    (@impl $name:ident, AXValue<$ty:ty>, $const:ident, $setter:ident) => {
-        accessor!(@impl $name, AXValue<$ty>, $const);
-        fn $setter(&self, value: impl Into<$ty>) -> Result<()> {
-            self.set_attribute(&AXAttribute::$name(), AXValue::new(&value.into())?)
-        }
-    };
-    (@impl $name:ident, $ty:ty, $const:ident, $setter:ident) => {
-        accessor!(@impl $name, $ty, $const);
-        fn $setter(&self, value: impl Into<$ty>) -> Result<()> {
-            self.set_attribute(&AXAttribute::$name(), value)
-        }
-    };
-    (@impl $name:ident, AXValue<$ty:ty>, $const:ident) => {
+}
+
+macro_rules! impl_elem_attr_method {
+    ($name:ident, AXValue<$ty:ty>, $const:ident $(, $setter:ident)?) => {
         fn $name(&self) -> Result<$ty> {
             self.attribute(&AXAttribute::$name()).and_then(|v| v.value())
         }
+        $(fn $setter(&self, value: impl Into<$ty>) -> Result<()> {
+            self.set_attribute(&AXAttribute::$name(), AXValue::new(&value.into())?)
+        })?
     };
-    (@impl $name:ident, $ty:ty, $const:ident) => {
+    ($name:ident, $ty:ty, $const:ident $(, $setter:ident)?) => {
         fn $name(&self) -> Result<$ty> {
             self.attribute(&AXAttribute::$name())
         }
+        $(fn $setter(&self, value: impl Into<$ty>) -> Result<()> {
+            self.set_attribute(&AXAttribute::$name(), value)
+        })?
     };
 }
 
@@ -109,18 +106,12 @@ macro_rules! define_attributes {
 
         #[allow(missing_docs)]
         pub trait AXUIElementAttributes {
-            $(accessor!(@decl $($args)*);)*
+            $(define_elem_attr_method!($($args)*);)*
         }
 
         impl AXUIElementAttributes for AXUIElement {
-            $(accessor!(@impl $($args)*);)*
+            $(impl_elem_attr_method!($($args)*);)*
         }
-    }
-}
-
-impl AXAttribute<CFType> {
-    pub fn new(name: &CFString) -> Self {
-        AXAttribute(name.to_owned(), PhantomData)
     }
 }
 

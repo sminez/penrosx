@@ -89,6 +89,26 @@ impl OsxWindow {
         )
     }
 
+    pub fn id(&self) -> WinId {
+        self.win_id
+    }
+
+    pub fn owner(&self) -> &str {
+        &self.owner
+    }
+
+    pub fn window_name(&self) -> Option<&str> {
+        self.window_name.as_deref()
+    }
+
+    pub fn bounds(&self) -> Rect {
+        self.bounds
+    }
+
+    pub fn axui_elem(&self) -> &AXUIElement {
+        &self.axwin
+    }
+
     pub fn set_size(&self, w: f64, h: f64) -> Result<()> {
         self.axwin.set_size(CGSize::new(w, h))
     }
