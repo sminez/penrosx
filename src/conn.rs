@@ -300,12 +300,31 @@ impl OsxConn {
 
     #[tracing::instrument(skip(self, state))]
     fn manage_new_windows(&mut self, state: &mut State<Self>) -> Result<()> {
-        let ids: Vec<_> = self.windows.values().map(|win| win.win_id).collect();
+        let ids: Vec<_> = self
+            .windows
+            .values()
+            .map(|win| win.win_id)
+            .filter(|id| !state.client_set.contains(id))
+            .collect();
 
-        for id in ids.iter() {
-            if !state.client_set.contains(id) {
-                self.manage(*id, state)?;
-            }
+        for id in ids.into_iter() {
+            self.manage(id, state)?;
+        }
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, state))]
+    fn unmanage_closed_windows(&mut self, state: &mut State<Self>) -> Result<()> {
+        let ids: Vec<_> = state
+            .client_set
+            .clients()
+            .filter(|id| !self.windows.contains_key(id))
+            .copied()
+            .collect();
+
+        for id in ids.into_iter() {
+            self.unmanage(id, state)?;
         }
 
         Ok(())
@@ -313,15 +332,10 @@ impl OsxConn {
 
     #[tracing::instrument(skip(self, state))]
     fn focus_active_app_window(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
-        let app = match self.apps.get(&pid) {
-            Some(app) => app,
-            None => {
-                self.update_known_apps_and_windows();
-                self.apps
-                    .get(&pid)
-                    .ok_or(custom_error!("unknown app pid: {}", pid))?
-            }
-        };
+        let app = self
+            .apps
+            .get(&pid)
+            .ok_or(custom_error!("unknown app pid: {}", pid))?;
         let axwin = match app.focused_ax_window() {
             Ok(axwin) => axwin,
             Err(_) => return Ok(()), // if we can't find the window then skip
@@ -331,7 +345,6 @@ impl OsxConn {
             return Ok(()); // already focused
         }
         if let Some(id) = maybe_id {
-            self.manage_new_windows(state)?;
             self.modify_and_refresh(state, |cs| cs.focus_client(&id))?;
         }
 
@@ -540,6 +553,12 @@ impl Conn for OsxConn {
         state: &mut State<Self>,
     ) -> Result<()> {
         use Event::*;
+
+        // Fully syncing the state each time like this is pretty heavy handed but the events I'm
+        // getting through currently don't allow me to keep everything in sync by themselves.
+        self.update_known_apps_and_windows();
+        self.manage_new_windows(state)?;
+        self.unmanage_closed_windows(state)?;
 
         match evt {
             AppActivated { pid } => self.focus_active_app_window(pid, state),
