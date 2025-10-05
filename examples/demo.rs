@@ -9,10 +9,17 @@ use penrose::{
             transformers::ReflectHorizontal,
         },
     },
-    core::{Config, bindings::KeyBindings, layout::LayoutStack},
+    core::{Config, bindings::KeyBindings, conn::Query, layout::LayoutStack},
+    extensions::hooks::{
+        NamedScratchPad, ToggleNamedScratchPad, add_named_scratchpads, manage::FloatingCentered,
+    },
     map, stack,
 };
-use penrosx::{MainThreadMarker, OsxConn, try_parse_key_bindings};
+use penrosx::{
+    MainThreadMarker, OsxConn,
+    query::{AppName, Title},
+    try_parse_key_bindings,
+};
 use std::{collections::HashMap, io::stdout};
 use tracing::subscriber::set_global_default;
 use tracing_subscriber::FmtSubscriber;
@@ -29,9 +36,26 @@ fn main() -> anyhow::Result<()> {
         ..Config::default()
     };
 
+    let (nsp_term, toggle_scratch) = NamedScratchPad::new(
+        "terminal",
+        "kitty --title scratchpad",
+        AppName("kitty").and(Title("scratchpad")),
+        FloatingCentered::new(0.8, 0.8),
+        true,
+    );
+
     let mtm = MainThreadMarker::new().unwrap();
     let conn = OsxConn::try_new(mtm)?;
-    conn.init_wm_and_run(mtm, config, key_bindings()?, HashMap::default(), |_| Ok(()));
+    conn.init_wm_and_run(
+        mtm,
+        config,
+        key_bindings(toggle_scratch)?,
+        HashMap::default(),
+        |wm| {
+            add_named_scratchpads(wm, vec![nsp_term]);
+            Ok(())
+        },
+    );
 
     Ok(())
 }
@@ -48,7 +72,7 @@ fn layouts() -> LayoutStack {
     )
 }
 
-fn key_bindings() -> penrose::Result<KeyBindings<OsxConn>> {
+fn key_bindings(toggle_scratch: ToggleNamedScratchPad) -> penrose::Result<KeyBindings<OsxConn>> {
     let mut raw_bindings = map! {
         map_keys: |k: &str| k.to_owned();
 
@@ -68,6 +92,8 @@ fn key_bindings() -> penrose::Result<KeyBindings<OsxConn>> {
         "M-down" => send_layout_message(|| IncMain(-1)),
         "M-right" => send_layout_message(|| ExpandMain),
         "M-left" => send_layout_message(|| ShrinkMain),
+
+        "M-A-slash" => Box::new(toggle_scratch),
     };
 
     for tag in &["1", "2", "3", "4", "5", "6", "7", "8", "9"] {
@@ -92,7 +118,15 @@ mod tests {
 
     #[test]
     fn key_bindings_are_valid() {
-        let res = key_bindings();
+        let (nsp_term, toggle_scratch) = NamedScratchPad::new(
+            "terminal",
+            "kitty --title scratchpad",
+            AppName("kitty").and(Title("scratchpad")),
+            FloatingCentered::new(0.8, 0.8),
+            true,
+        );
+
+        let res = key_bindings(nsp_term);
         assert!(res.is_ok(), "{res:?}")
     }
 }
