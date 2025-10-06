@@ -6,7 +6,7 @@ use penrose::{
         layout::{
             MainAndStack,
             messages::{ExpandMain, IncMain, ShrinkMain},
-            transformers::ReflectHorizontal,
+            transformers::{Gaps, ReflectHorizontal},
         },
     },
     core::{Config, bindings::KeyBindings, conn::Query, layout::LayoutStack},
@@ -26,7 +26,7 @@ use tracing_subscriber::FmtSubscriber;
 
 fn main() -> anyhow::Result<()> {
     let builder = FmtSubscriber::builder()
-        .with_env_filter("debug")
+        .with_env_filter("info")
         .with_writer(stdout);
     let subscriber = builder.finish();
     set_global_default(subscriber).context("unable to set a global tracing subscriber")?;
@@ -64,12 +64,15 @@ fn layouts() -> LayoutStack {
     let max_main = 1;
     let ratio = 0.6;
     let ratio_step = 0.1;
+    let outer_px = 5;
+    let inner_px = 5;
 
     stack!(
         MainAndStack::side(max_main, ratio, ratio_step),
         ReflectHorizontal::wrap(MainAndStack::side(max_main, ratio, ratio_step)),
         MainAndStack::bottom(max_main, ratio, ratio_step)
     )
+    .map(|layout| Gaps::wrap(layout, outer_px, inner_px))
 }
 
 fn key_bindings(toggle_scratch: ToggleNamedScratchPad) -> penrose::Result<KeyBindings<OsxConn>> {
