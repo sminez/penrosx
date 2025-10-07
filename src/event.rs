@@ -83,6 +83,11 @@ pub enum Event {
         /// The window ID
         id: WinId,
     },
+    /// The given window has been destroyed
+    WindowDestroyed {
+        /// The window ID
+        id: WinId,
+    },
 
     /// A user provided key binding has been run
     KeyPress {
@@ -93,7 +98,7 @@ pub enum Event {
 
 impl ConnEvent for Event {
     fn requires_pointer_warp(&self) -> bool {
-        true
+        matches!(self, Self::FocusedWindowChanged { .. })
     }
 }
 
@@ -112,6 +117,7 @@ impl fmt::Display for Event {
             UiElementDestroyed { .. } => write!(f, "UiElementDestroyed"),
             WindowMiniaturized { .. } => write!(f, "WindowMiniturized"),
             WindowDeminiaturized { .. } => write!(f, "WindowDeminiturized"),
+            WindowDestroyed { .. } => write!(f, "WindowDestroyed"),
             WindowMoved { .. } => write!(f, "WindowMoved"),
             WindowResized { .. } => write!(f, "WindowResized"),
             KeyPress { .. } => write!(f, "KeyPress"),

@@ -5,7 +5,7 @@
 //! mapped into internal [Event]s for processing in the main window manager event loop.
 use crate::{
     event::{EVENT_SENDER, Event},
-    sys::current_screen_rects,
+    sys::{current_screen_rects, skylight::register_for_sls_notifications},
 };
 use objc2::{AnyThread, ClassType, MainThreadMarker, define_class, msg_send, rc::Retained, sel};
 use objc2_app_kit::{
@@ -89,6 +89,10 @@ impl GlobalObserverInner {
                 Some(NSApplicationDidChangeScreenParametersNotification),
                 Some(&NSApplication::sharedApplication(mtm)),
             );
+
+            if let Err(e) = register_for_sls_notifications() {
+                panic!("failed to register for SLS events: {e}");
+            }
 
             inner
         }

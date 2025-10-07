@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 pub(crate) mod ax;
 pub(crate) mod carbon;
+pub(crate) mod skylight;
 
 static HAVE_CREATED_WINDOW: AtomicBool = AtomicBool::new(false);
 

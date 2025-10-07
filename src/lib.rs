@@ -17,6 +17,7 @@
 )]
 pub use keyboard_types::{Code, Modifiers};
 pub use objc2::MainThreadMarker;
+use penrose::WinId;
 
 mod app;
 mod bindings;
@@ -28,6 +29,9 @@ mod sys;
 mod win;
 
 pub use bindings::{HotKey, try_parse_key_bindings};
-pub use conn::{OsxConn, ROOT};
+pub use conn::OsxConn;
 pub use event::Event;
 pub use sys::ax::{actions::AXUIElementActions, attribute::AXUIElementAttributes, error::AXError};
+
+/// The root window ID
+pub static ROOT: WinId = WinId(0);

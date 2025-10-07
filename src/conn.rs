@@ -1,5 +1,6 @@
 //! The [Conn] implementation itself.
 use crate::{
+    ROOT,
     app::OsxApp,
     bindings::{HotKey, KeyListener},
     event::{EVENT_SENDER, Event},
@@ -8,6 +9,7 @@ use crate::{
         Pid,
         ax::{check_ax_permissions_and_prompt, set_ax_timeout, ui_element::AXUIElement},
         current_screen_rects,
+        skylight::update_sls_window_notifications,
     },
     win::OsxWindow,
 };
@@ -39,9 +41,6 @@ use std::{
     thread::spawn,
 };
 use tracing::{debug, error, info, trace, warn};
-
-/// The root window ID
-pub static ROOT: WinId = WinId(0);
 
 macro_rules! app_wins {
     ($self:ident, $pid:expr) => {
@@ -217,6 +216,8 @@ impl OsxConn {
                 .collect();
 
         self.apps.retain(|k, _| current_apps.contains_key(k));
+        self.hidden_apps.retain(|pid| self.apps.contains_key(pid));
+
         for (pid, running_app) in current_apps.into_iter() {
             if !self.apps.contains_key(&pid)
                 && let Ok(app) = OsxApp::try_new(running_app)
@@ -232,6 +233,9 @@ impl OsxConn {
             .filter(|win| win.window_layer == 0)
             .map(|win| (win.win_id, win))
             .collect();
+
+        self.miniaturized_windows
+            .retain(|id, _| self.windows.contains_key(id));
     }
 
     fn set_hide_pt(&mut self) -> Result<()> {
@@ -402,7 +406,7 @@ impl OsxConn {
     #[tracing::instrument(skip(self, state))]
     fn handle_app_hidden(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
         if !self.apps.contains_key(&pid) {
-            warn!("unknown app hidden");
+            debug!("unknown app hidden");
             return Ok(());
         }
 
@@ -423,7 +427,7 @@ impl OsxConn {
     #[tracing::instrument(skip(self, state))]
     fn handle_app_unhidden(&mut self, pid: Pid, state: &mut State<Self>) -> Result<()> {
         if !self.apps.contains_key(&pid) {
-            warn!("unknown app unhidden");
+            debug!("unknown app unhidden");
             return Ok(());
         } else if !self.hidden_apps.contains(&pid) {
             warn!("app unhidden but it wasn't previously tracked as hidden");
@@ -459,13 +463,13 @@ impl OsxConn {
     #[tracing::instrument(skip(self, state))]
     fn handle_window_miniturized(&mut self, id: WinId, state: &mut State<Self>) -> Result<()> {
         if !self.windows.contains_key(&id) {
-            warn!("unknown window miniaturized");
+            debug!("unknown window miniaturized");
             return Ok(());
         }
 
-        trace!("stashing window");
         let cs = &mut state.client_set;
         let tag = cs.tag_for_client(&id).unwrap_or(cs.current_tag());
+        trace!(%id, %tag, "stashing window");
         self.miniaturized_windows.insert(id, tag.to_string());
         cs.remove_client(&id);
 
@@ -475,14 +479,14 @@ impl OsxConn {
     #[tracing::instrument(skip(self, state))]
     fn handle_window_deminiturized(&mut self, id: WinId, state: &mut State<Self>) -> Result<()> {
         if !self.windows.contains_key(&id) {
-            warn!("unknown window deminiaturized");
+            debug!("unknown window deminiaturized");
             return Ok(());
         }
 
         trace!("unstashing window");
         let cs = &mut state.client_set;
         if let Some(tag) = self.miniaturized_windows.remove(&id) {
-            trace!(%id, "replacing app window");
+            trace!(%id, %tag, "replacing app window");
             let ws = match cs.workspace_mut(&tag) {
                 Some(ws) => ws,
                 None => cs.current_workspace_mut(),
@@ -559,26 +563,28 @@ impl Conn for OsxConn {
         self.update_known_apps_and_windows();
         self.manage_new_windows(state)?;
         self.unmanage_closed_windows(state)?;
+        update_sls_window_notifications(self.windows().keys().copied())?;
 
         match evt {
             AppActivated { pid } => self.focus_active_app_window(pid, state),
+            AppDeactivated { .. } => Ok(()),
             AppLaunched { pid } => self.focus_active_app_window(pid, state),
             FocusedWindowChanged { pid } => self.focus_active_app_window(pid, state),
 
             AppHidden { pid } => self.handle_app_hidden(pid, state),
-            AppTerminated { pid } => self.clear_terminated_app_state(pid, state),
             AppUnhidden { pid } => self.handle_app_unhidden(pid, state),
+            AppTerminated { pid } => self.clear_terminated_app_state(pid, state),
             UiElementDestroyed { id } => self.clear_closed_window_state(id, state),
             WindowCreated { pid } => self.handle_new_window_for_pid(pid, state),
+            WindowDestroyed { id } => self.clear_closed_window_state(id, state),
             WindowDeminiaturized { id } => self.handle_window_deminiturized(id, state),
             WindowMiniaturized { id } => self.handle_window_miniturized(id, state),
-            WindowMoved { id } | WindowResized { id } => self.handle_window_position(id, state),
+            WindowMoved { id } => self.handle_window_position(id, state),
+            WindowResized { id } => self.handle_window_position(id, state),
 
             KeyPress { k } => self.handle_keypress(k, key_bindings, state),
 
             ScreensChanged { screen_rects } => self.handle_screens_changed(screen_rects, state),
-
-            AppDeactivated { .. } => Ok(()),
         }
     }
 
@@ -640,11 +646,19 @@ impl Conn for OsxConn {
         })
     }
 
-    fn show_client(&mut self, _id: WinId, _state: &mut State<Self>) -> Result<()> {
+    fn show_client(&mut self, id: WinId, _state: &mut State<Self>) -> Result<()> {
+        if id == ROOT {
+            return Ok(());
+        }
+
         Ok(())
     }
 
     fn hide_client(&mut self, id: WinId, _state: &mut State<Self>) -> Result<()> {
+        if id == ROOT {
+            return Ok(());
+        }
+
         let p = self.hide_pt;
         self.with_suppressed_animations(id, |win| {
             win.set_pos(p.x as f64, p.y as f64)?;
@@ -660,6 +674,10 @@ impl Conn for OsxConn {
 
     // based on https://github.com/koekeishiya/yabai/blob/527b0aa7c259637138d3d7468b63e3a9eb742d30/src/window_manager.c#L2066
     fn kill_client(&mut self, id: WinId) -> Result<()> {
+        if id == ROOT {
+            return Ok(());
+        }
+
         let win = match self.windows.get(&id) {
             Some(win) => win,
             None => {
@@ -672,6 +690,10 @@ impl Conn for OsxConn {
     }
 
     fn focus_client(&mut self, id: WinId) -> Result<()> {
+        if id == ROOT {
+            return Ok(());
+        }
+
         let win = match self.windows.get(&id) {
             Some(win) => win,
             None => {
